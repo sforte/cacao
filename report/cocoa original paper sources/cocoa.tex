@@ -1,0 +1,1932 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{nips14submit_e,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx, amsmath, amssymb,amsthm}
+%\usepackage{algorithmic}
+\usepackage[ruled, vlined]{algorithm2e}
+% other options: boxed, boxruled, commentsnumbered
+\usepackage{bm,color}
+\usepackage{mathdots}
+\usepackage{subcaption}
+\usepackage{float}
+
+\definecolor{darkgreen}{rgb}{0,.4,.2}
+\definecolor{darkblue}{rgb}{.1,.2,.6}
+\definecolor{brightblue}{rgb}{0,0.6,0.8}
+\hypersetup{
+  pdftitle={Communication-Efficient Distributed Dual Coordinate Ascent},
+  colorlinks=true,
+  linkcolor=darkblue,
+  citecolor=darkgreen,
+  filecolor=darkblue,
+  urlcolor=darkblue
+}
+
+% all of the math shortcuts are here
+\input{header}
+
+\title{Communication-Efficient \\ Distributed Dual Coordinate Ascent}
+
+\author{
+Martin Jaggi $^{*}$\\
+%Department of Computer Science \\
+ETH Zurich \\
+%\texttt{\small jaggi@inf.ethz.ch} \\
+\And
+Virginia Smith
+\thanks{Both authors contributed equally.}
+\\
+%Computer Science Division\\
+UC Berkeley \\
+%\texttt{\small vsmith@cs.berkeley.edu} \\
+\And
+Martin Tak\'a\v{c}\\
+%Department of Industrial and Systems Engineering  \\
+Lehigh University \\
+%\texttt{\small Takac.MT@gmail.com} \\
+\AND
+Jonathan Terhorst \\
+%Department of Statistics \\
+UC Berkeley \\
+%\texttt{\small terhorst@stat.berkeley.edu} \\
+\And
+Sanjay Krishnan \\
+%Computer Science Division \\
+UC Berkeley \\
+%\texttt{sanjay@berkeley.edu} \\
+\And
+Thomas Hofmann\\
+%Department of Computer Science \\
+ETH Zurich \\
+%\texttt{\small thomas.hofmann@inf.ethz.ch} \\
+\And
+Michael I. Jordan \\
+%Computer Science Division \\
+UC Berkeley \\
+%\texttt{\small jordan@berkeley.edu} \\
+}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%% our algorithm name %%%%%%%%
+\newcommand{\algname}{\textsc{CoCoA}\xspace}  %or: CoCoA ? was: DistDCA
+\newcommand{\localalgname}{\textsc{LocalDualMethod}\xspace}
+\newcommand{\localSDCA}{\textsc{LocalSDCA}\xspace}
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcounter{procCf}
+\newenvironment{procedureCustom}
+  {\refstepcounter{procCf}%
+    \renewcommand*{\algorithmcfname}{Procedure}%
+    \begin{algorithm}\renewcommand\thealgocf{\Alph{procCf}}}
+  {\end{algorithm}\addtocounter{algocf}{-1}}
+  
+  
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+
+\nipsfinalcopy % UNCOMMENT FOR FINAL VERSION
+
+
+
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract} 
+Communication remains the most significant bottleneck in the performance of distributed optimization algorithms for large-scale machine learning. In this paper, we propose a communication-efficient framework, \algname, that %was: leverages the primal-dual structure of the optimization problems, together with local computation
+uses local computation in a primal-dual setting to dramatically reduce the amount of necessary communication. We provide a strong convergence rate analysis for this class of algorithms, as well as experiments on real-world distributed datasets with implementations in \textsf{\small Spark}. In our experiments, we find that as compared to state-of-the-art mini-batch versions of SGD and SDCA algorithms, \algname converges to the same $.001$-accurate solution quality on average $25\times$ %and even localSGD
+as quickly. %for linear SVMs
+\end{abstract}
+
+%abstract as pure text:
+%Communication remains the most significant bottleneck in the performance of distributed optimization algorithms for large-scale machine learning. In this paper, we propose a communication-efficient framework, COCOA, that uses local computation in a primal-dual setting to dramatically reduce the amount of necessary communication. We provide a strong convergence rate analysis for this class of algorithms, as well as experiments on real-world distributed datasets with implementations in Spark. In our experiments, we find that as compared to state-of-the-art mini-batch versions of SGD and SDCA algorithms, COCOA converges to the same .001-accurate solution quality on average 25× as quickly.
+
+
+
+%
+\section{Introduction} \label{introduction}
+
+With the immense growth of available data, developing distributed algorithms
+for machine learning is increasingly important, and yet
+remains a challenging topic both theoretically and in practice.
+%
+On typical real-world systems, communicating data between machines is vastly more expensive than reading data from main memory,
+e.g. by a factor of several orders of magnitude when leveraging commodity hardware.\footnote{On typical computers, the latency for accessing data in main memory is in the order of 100 nanoseconds. In contrast, the latency for sending data over a standard network connection is around 250,000 nanoseconds.}
+Yet, despite this reality, most existing distributed optimization methods for machine learning require significant communication between workers, often equalling the amount of local computation (or reading of local data).
+This includes for example popular mini-batch versions of online methods, such as stochastic subgradient (SGD) and coordinate descent (SDCA).
+
+In this work, we target this bottleneck. We propose a distributed optimization framework that allows one to freely steer the trade-off between \emph{communication} and \emph{local computation}. In doing so, the framework can be easily adapted to the diverse spectrum of available large-scale computing systems, from high-latency commodity clusters to low-latency supercomputers or the multi-core setting.
+
+%% work on this section. describe specifically how we differ!
+Our new framework, \algname (\textbf{Co}mmunication-efficient distributed dual \textbf{Co}ordinate \textbf{A}scent), supports objectives for linear reguarlized loss minimization, encompassing a broad class of machine learning models. By leveraging the primal-dual structure of these optimization problems, \algname effectively combines partial results from local computation while avoiding conflict with updates simultaneously computed on other machines. %updates simultaneously computed on other machines.
+% precise description. maybe too precise for here already?
+In each round, \algname employs steps of an arbitrary dual optimization method on the local data on each machine, in parallel. A single update vector is then communicated to the master node.
+For example, when choosing to perform $H$ iterations (usually order of the data size $n$) of an online optimization method locally per round, our scheme saves a factor of $H$ in terms of communication compared to the corresponding naive distributed update scheme (i.e., updating a single point before communication). When processing the same number of datapoints, this is clearly a dramatic savings.
+
+Our theoretical analysis (Section \ref{theory}) shows that this significant 
+reduction in  communication cost comes with only a very moderate increase 
+in the amount of total computation, in order to reach the same optimization 
+accuracy. We show that, in general, the distributed \algname framework will inherit the convergence rate of the internally-used local optimization method.
+When using SDCA (randomized dual coordinate ascent) as the local optimizer
+and assuming smooth losses, this convergence rate is geometric.
+
+%\paragraph{Contributions.}
+%We present a general and practical framework for distributed primal-dual
+%optimization called \algname (\textbf{Co}mmunication-efficient distributed
+%dual \textbf{Co}ordinate \textbf{A}scent). The framework is novel in that it
+%allows one to freely steer the trade-off between the amount of
+%\emph{communication} and \emph{local computation}.
+%Therefore, it can adapt well to the diverse spectrum of available large-scale
+%computing systems, ranging from the high-latency commodity clusters to low-latency
+%communication supercomputers or the multi-core setting.
+
+In practice, our experiments with the method implemented on the fault-tolerant
+\textsf{\small Spark} platform %
+%\footnote{
+%We plan to release our code to be used with the open-source machine-learning library of \textsf{\small Spark}, \href{http://spark.apache.org/mllib/}{\textsf{\small MLlib}}.
+%} %
+ \cite{Zaharia:2012ve} confirm both the clock
+time performance and huge communication savings of the proposed method on a
+variety distributed datasets.
+Our experiments consistently show order of magnitude gains over traditional
+mini-batch methods of both SGD and SDCA, and significant gains over the faster but theoretically
+less justified local SGD methods.
+
+
+\paragraph{Related Work.}
+As we discuss below (Section \ref{relatedwork}), our approach
+is distinguished from recent work on parallel and distributed
+optimization \cite{Yang:2013vl,Yang:2013ui,Takac:2013ut,Niu:2011wo,Zinkevich:2010tj,Bradley:2011wq,Marecek:2014vu,Necoara:2013iw}
+in that we provide a general framework for
+improving the communication efficiency of \emph{any} dual optimization
+method. 
+%We derive theoretical convergence guarantees for this framework which, importantly, do not depend on data-specific quantities. 
+To the best of our knowledge, our work is the first to analyze the 
+convergence rate for an algorithm with this level of communication efficiency, without making data-dependent assumptions.
+The presented analysis covers the case of smooth losses, but should also be 
+extendable to the non-smooth case.
+%
+Existing methods using mini-batches \cite{Takac:2013ut,Yang:2013vl,Takac:2014vq} 
+are closely related, though our algorithm makes 
+significant improvements by immediately applying all updates 
+locally while they are processed, a scheme that is not considered in the classic
+mini-batch setting.
+This intuitive modification results in dramatically improved empirical 
+results and also strengthens our theoretical convergence rate.
+More precisely, the convergence rate shown here only degrades with the 
+number of workers~$K$, instead of with the significantly larger mini-batch-size
+(typically order $n$) in the case of mini-batch methods.
+
+
+%While these algorithms have successfully enabled users to fit statistical
+%models to massive data, there is significant room for improvement in terms
+%of performance and communication-efficiency. %In particular, communication
+%in the distributed environment presents a unique challenge which, if not
+%mitigated by algorithm designers, leads to costly performance delays.
+%
+%On real systems leveraging commodity , communicating data between workers is
+%vastly more expensive than reading data from main memory, and the difference
+%in practice can easily reduce performance by several orders of magnitude. To
+%tackle this issue, we describe a distributed optimization framework which is
+%designed to minimize the amount of communication between distributed
+%machines.% Our algorithm is based on the idea of repeatedly solving a
+%collection of local optimization problems in parallel on each node. We show
+%that this strategy compares favorably with 
+%Many of the current state-of-the-art serial algorithms for such problems,
+%such as stochastic subgradient (SGD), can also be run in a distributed or
+%parallel setting, and have in common that they all process a single data
+%example per iteration. However, the existing straight-forward distributed
+%versions of those methods require an amount of data \emph{communication}
+%between workers which is equal to the amount of local \emph{computation} (or
+%reading of local data).
+%
+%OLD: A fundamental problem of existing distributed and parallel optimization
+%techniques working on the \emph{primal} formulation (\ref{eq:sdcaPrimal}) of
+%the problems of interest here is the fact that the amount of communication
+%is equal to the amount of computation for most of these methods.
+%This is due to the fact that the updates that each worker performs on the
+%model $\wv$ are rescaled versions of the training data example~$\x_i$
+%themselves, e.g. for SGD type methods.
+%We refer the reader to the more detailed discussion in the related work
+%Section \ref{relatedwork}.
+
+%\paragraph{Related Work2.}
+Our method builds on a closely related recent line of work of
+\cite{Yang:2013vl,Yang:2013ui,Yu:2010ct,Yu:2012fp}.
+We generalize the algorithm of~\cite{Yang:2013vl,Yang:2013ui} by allowing
+the use of arbitrary (dual) optimization methods as the local subroutine within our framework. 
+In the special case of using coordinate ascent as the local optimizer, the
+resulting algorithm is very similar, though with a different computation of the
+coordinate updates.
+Moreover, we provide the first theoretical convergence rate analysis for such
+methods, without making strong assumptions on the data. %TODO: this is a repeat from above now
+
+
+%In terms of data access, our method is as communication efficient as local
+%SGD (performing a small number of SGD steps locally on each worker, before
+%combining the updates in a communication round). In this light, our
+%convergence rate might appear more surprising, because local SGD does not
+%even asymptotically converge to the global optimum in the distributed
+%setting.
+%
+The proposed \algname framework in its basic variant is entirely free of
+tuning parameters or learning rates, in contrast to SGD-based methods. The
+only choice to make is the selection of the internal local optimization
+procedure, steering the desired trade-off between communication and computation.
+%
+When choosing a primal-dual optimizer as the internal procedure, the 
+duality gap readily provides a fair stopping criterion and efficient accuracy 
+certificates during optimization.
+
+
+% SAY EXPLICITLY: weight vector will be dense (though the communicated \Delta \wv can still be sparse with sparse data and not too big $H$)
+%
+%
+%OLD paragraph on spark (moved from beginning of intro):
+%A leading design paradigm in processing massive datasets is to leverage
+%in-memory computation across a distributed cluster, with e.g. \textsf{\small
+%Spark} \cite{Zaharia:2012ve}. This involves first loading the entire dataset
+%into memory, and then running successive rounds of map-reduce to process the
+%data on each machine. Popular map-reduce frameworks are typically
+%shared-nothing, which allows for fault tolerance and consistency, but
+%requires repeated communication in order to share global state. In this
+%setting, algorithms are no longer disk I/O bound, and communication becomes
+%the most significant bottleneck. For systems leveraging commodity hardware,
+%communicating data between machines can easily become orders of magnitude
+%more expensive than reading from main memory.
+%
+%
+%\paragraph{OLD Contributions.} Our contribution in this work is to break
+%this communication bottleneck, showing that it is possible to very
+%significantly reduce the amount of communication necessary for optimizing
+%problems of the form \eqref{eq:sdcaPrimal}, with only a negligible increase
+%of communication cost, while still guaranteeing convergence.
+%Our experiments confirm that our method can be made up to 10000 times faster
+%than naive distributed SGD or SDCA, and also significantly beats existing
+%mini-batch distributed optimization schemes, which are also relatively
+%communication efficient. % TODO: Say something about theory here
+%
+%
+%
+%references for some existing distributed optimization algorithms:
+%\cite{ShalevShwartz:2013wl,Takac:2013ut,Yang:2013vl,Yu:2010ct,Richtarik:
+%2013us}
+%
+%We show that this strategy compares favorably with the recently proposed
+%\emph{mini-batch} suite of distributed optimization algorithms
+%\cite{Richtarik:2013us}
+%
+%% TODO: our main contributions
+%OLD: Modern machine learning problems
+%encounter computational obstacles which have not traditionally been
+%considered in the statistical estimation literature. For example, the
+%emergence of data sets which are too numerous to fit in the memory of
+%a single computer has led to the development of a number of online,
+%parallel and/or distributed optimization algorithms
+%\cite{ShalevShwartz:2013wl,Takac:2013ut,Yang:2013vl,Yu:2010ct,Richtarik:
+%2013us}. While these algorithms have successfully
+%enabled users to fit statistical models to massive data, additional
+%challenges remain. In particular, distributed computations necessarily
+%incur communication overhead which, if not mitigated by algorithm
+%designers, can lead to costly performance delays.
+%
+%We describe a distributed optimization algorithm which is
+%designed to minimize the amount of communication between cluster nodes.
+%Our algorithm is based on the idea of repeatedly solving a collection of
+%local optimization problems in parallel on each node. We show that this
+%strategy compares favorably with the recently proposed \emph{mini-batch}
+%suite of distributed optimization algorithms \cite{Richtarik:2013us}, and
+%also give a theoretical guarantee that our algorithm converges at least
+%as fast as the local optimization algorithm which is executed on each
+%node. On sample machine learning problems involving real-world data
+%sets, we show empirically that our algorithm in fact performs much
+%faster than this theoretical bounds would suggest. We conclude with
+%some comments on additional open problems and further directions.
+%
+%
+%\paragraph{The cost of communication.}
+%Two real examples comparing the cost of communicating data between workers
+%as compared to reading data from main memory are as follows:
+%
+%For machine learning applications, reading and computation time are
+%identical, as all online methods we consider here only perform one single
+%vector operation per iteration.
+%For example, modern computers can read a vector of $d$ entries from main
+%memory in a time of roughly $d$ nanoseconds, with a latency of in the order
+%of 100 nanoseconds.
+%main memory: example: 190 nanoseconds per 100 dimensional vector: 250000
+%nanoseconds / 1MB * 8 bytes * 100 = 190 nanoseconds
+%
+%TODO: this was throughput. also talk about latency:
+%sanjay:  Latency of memory is on the order 100ns, while latency on a network
+%is on the order of 250,000ns =0.25milliseconds.  (i.e. 2500 times slower)
+%
+%In comparison, sending even a small amount of data between two worker
+%machines over a standard network connection has a latency of roughly
+%0.25milliseconds, which is 2500 times slower.
+%
+%It is not uncommon that for example a reduce operation between the workers
+%takes time at least in the order of $10^{-3}$ up to $10^{-1}$ %TODO: source
+%required!!! 
+%seconds even on fast distributed systems on commodity clusters
+%\cite{Zaharia:2012ve}.
+%\footnote{For more traditional map-reduce schemes such as \textsf{\small
+%Hadoop}, a single communication round (reduce-operation) much slower, which
+%can increase time by two orders of magnitude in a realistic setting
+%\cite{Zaharia:2012ve}.}
+%
+%As an example, if that every data example in our problem
+%\eqref{eq:sdcaPrimal} consists of around $100$ non-zero features, it is
+%therefore reasonable to assume that communicating a vector is an order of
+%$10^6$ times % 10e-3 seconds / 100 nanoseconds
+%more expensive than the computation in the online algorithms.
+%
+%
+%
+%\paragraph{Reusable Fault-Tolerant Implementation.}
+%Currently, the implementation of large scale machine learning methods on low
+%latency distributed environments (using e.g. MPI) remains very challenging,
+%is often hardware specific, and usually not robust w.r.t. to failures of
+%some nodes or communication links, which is a big disadvantage for large
+%practical systems.
+%
+%%% ADD TO FUTURE WORK
+%By introducing a less communication demanding algorithm architecture in the
+%work here, we alleviate this problem by allowing to run on cheaper commodity
+%cluster machines with slower standard network connections.
+%We implement our method with robust fault-tolerant communication rounds by
+%using the \textsf{\small Spark} \cite{Zaharia:2012ve} platform, which
+%results in very compact and reusable code. We plan to contribute our code to
+%the open-source machine-learning library of \textsf{\small Spark}, called
+%\textsf{\small
+%MLlib}\footnote{\href{http://spark.apache.org/mllib/}{http://spark.apache.
+%org/mllib/}}.
+%
+%
+%
+%MORE: data on COMMUNICATION COST: hard to make precise statements, except
+%the physical network bandwidth.
+%
+%A spark \cite{Zaharia:2012ve} iteration takes 3 seconds on a 100 node
+%cluster, together with one pass through the local data (not sure how many
+%features or how many points.)
+%
+%\cite[Figure 13(b)]{Zaharia:2012ve} shows 22 seconds for an iteration on
+%$d=10^7$, however this includes a full pass through the local data also.
+%
+%
+%NOTE: asking around amplab for more precise numbers on communication costs
+%-- will update
+%  reply from sanjay about communication:
+%The communication argument is on the right track however, I would frame the
+%argument as this:
+%-Datasets are large and growing 
+%-Since memory is increasingly inexpensive, a dominant design paradigm for
+%iterative algorithms on distributed systems is in-memory computation (cite
+%spark); that is we first load the entire dataset into distributed memory and
+%then run map-reduce rounds.  
+%-(optional) Frameworks like Spark are often shared-nothing (each node
+%processes its own data and is "walled off") which offers fault tolerance and
+%consistency, however this necessitates communication to share information
+%(such as updating a global parameter value). 
+%-In this setting, algorithms are no longer disk I/O bound and communication
+%overheads are significant.
+%
+%I wouldn't criticize Hadoop/MapReduce so openly, I would say something along
+%the lines of:
+%-Communication costs can be greatly increased in systems like Hadoop which
+%replicate intermediate results for fault tolerance.
+%-Costs can also increase in contended networks as often the case in large
+%organizations.
+%
+%This should really drive home the point that you are running your
+%experiments in a very fair setting and real applications are only going to
+%further justify the approach.
+%
+%(Communication Cost Section)
+%-Communication is a problem in commodity hardware distributed clusters, it
+%may not be a problem in all parallel settings.
+%-I like the point that network communication is orders of magnitude higher.
+%
+%Here are some more arguments for why communication needs attention:
+%-Sparsity, even if your data is sparse you need to communicate a dense
+%weight vector
+%-Variance, MapReduce is synchronous and the network typically has a higher
+%variance than CPU or Memory--and you have to wait until all the data is
+%communicated until you can proceed.
+%
+%
+\paragraph{Paper Outline.} 
+The rest of the paper is organized as follows. In Section \ref{setup} we
+describe the problem setting of interest. Section \ref{method} outlines the
+proposed framework, \algname, and the convergence analysis of this method is
+presented in Section \ref{theory}. We discuss related work in Section
+\ref{relatedwork}, and compare against several other state-of-the-art methods empirically
+in Section \ref{experiments}. 
+%Conclusions and areas of future work are given in Section \ref{conclusion}.
+
+
+
+%
+\section{Setup} \label{setup}
+A large class of methods in machine learning and signal processing can be posed as the minimization of a convex loss function of linear predictors with a convex regularization term:
+%be formulated as the following generic optimization problem, which is a loss minimization of linear predictors, with convex regularization:
+%
+\begin{equation}
+\label{eq:sdcaPrimal}
+\min_{w \in\R^d} \quad \Big[\ P(\wv) := \frac{\lambda}{2}\norm{\wv}^2 +\frac1n 
+                       \sum_{i=1}^n \ell_i( \wv^T \x_i ) \ \Big], 
+\end{equation}
+
+Here the data training examples are real-valued vectors $\x_i \in \R^d$;
+the loss functions~$\ell_i, i=1,\dots,n$ are convex and depend possibly on
+labels $y_i \in \R$; and $\lambda>0$ is the
+regularization parameter. 
+Using the setup of~\cite{ShalevShwartz:2013wl}, we assume
+the regularizer is the $\ell_2$-norm for convenience.
+Examples of this class of problems include support vector machines, as well
+as regularized %$\ell_1$-regularized (LASSO),
+linear and logistic regression, %(both with $\ell_1$- or $\ell_2$-regularizer),
+ordinal regression, and others.
+
+The most popular method to solve problems of the form (\ref{eq:sdcaPrimal})
+is the \emph{stochastic subgradient method} (SGD)
+\cite{Robbins:1951ko,Bottou:2010uz,ShalevShwartz:2010cg}. In this setting, SGD becomes an online method where every iteration only requires access
+to a single data example $(\x_i,y_i )$, and the convergence rate is
+well-understood.
+
+%In big-data settings primal descent methods are potentially intractable.
+%For example, computation of the gradient of the primal objective
+%\eqref{eq:sdcaPrimal} requires access to all $n$ data points, which
+%may become prohibitive if $n$ is very large. In response to this
+%a class of stochastic descent algorithms have been proposed. In
+%expectation, these algorithms enjoy similar convergence guarantees as
+%their deterministic counterparts; nevertheless, they sometimes exhibit
+%undesirable convergence behavior in practice due to variance introduced
+%by randomly subsampling the data.
+%
+The associated conjugate \emph{dual} problem of \eqref{eq:sdcaPrimal} takes
+the following form, and is defined over one dual variable per each example in
+the training set.
+\begin{equation}
+    \label{eq:sdcaDual}
+    \max_{\av \in \R^n} \quad \Big[ \ 
+    D(\av) := - \frac{\lambda}{2} \norm{ A\av }^2
+    - \frac1n \sum_{i=1}^n \ell_i^*(-\alpha_i) \ \Big],
+\end{equation}
+where $\ell_i^*$ is the conjugate (Fenchel dual) of the loss function
+$\ell_i$%TODO: do we want to define it? maybe not
+, and the data matrix $A\in\R^{d\times n}$ collects the (normalized) data
+examples $A_i := \frac{1}{\lambda n} \x_i$ in its columns. The duality comes with the convenient mapping from dual to primal variables
+$\wv(\av) := A\av$ as given by the optimality
+conditions~\cite{ShalevShwartz:2013wl}.
+For any configuration of the dual variables $\av$, we have the duality gap
+defined as $P(\wv(\av)) - D(\av)$. This gap is a computable certificate of
+the approximation quality to the unknown true optimum $P(\wv^*) = D(\av^*)$,
+and therefore serves as a useful stopping criteria for algorithms.
+
+For problems of the form (\ref{eq:sdcaDual}), \emph{coordinate descent}
+methods have proven to be very efficient, and come with several benefits over
+primal methods.
+In randomized \emph{dual coordinate ascent} (SDCA), updates are made to the
+dual objective (\ref{eq:sdcaDual}) by solving for one coordinate completely
+while keeping all others fixed. This algorithm has been implemented in a
+number of software packages (e.g. \textsf{\small
+LibLinear}~\cite{Hsieh:2008bd}), and has proven very suitable for
+use in large-scale problems, while giving stronger convergence results than the
+primal-only methods (such as SGD), at the same iteration
+cost~\cite{ShalevShwartz:2013wl}. 
+In addition to superior performance, this method also benefits from requiring
+no stepsize, and having a well-defined stopping criterion given by the 
+duality gap.
+
+
+
+%
+\section{Method Description} \label{method}
+
+%Here we present a general and practical framework for distributed primal-dual optimization on problems of the form (\ref{eq:sdcaPrimal}), called \algname (\textbf{Co}mmunication-efficient distributed dual \textbf{Co}ordinate \textbf{A}scent).
+%
+%The main advantage of the method is that it allows to freely steer the trade-off between the amount of \emph{communication} and \emph{local computation}.
+%Therefore, it can adapt very well to the diverse spectrum of available large scale computing hardware, ranging from very low latency communication as in supercomputers or multi-core, to the other extreme of very high latency as in commodity clusters with disk-based map-reduce.
+
+The \algname framework, as presented in Algorithm \ref{alg:cdca}, assumes that the data $\{(\x_i,y_i)\}_{i=1}^n$ for a regularized loss minimization problem of the form (\ref{eq:sdcaPrimal}) is distributed over $K$ worker machines.
+%We write $\{\mathcal{I}_k\}_{k=1}^K$ for the partition of data indices $\{1,2,\dots,n\}$ such that $|\mathcal{I}_k|=n_k$.
+We associate with the datapoints their corresponding dual variables $\{\alpha_i\}_{i=1}^n$, being partitioned between the workers in the same way.
+The core idea is to use the dual variables to efficiently merge the parallel updates from the different workers without much conflict, by exploiting the fact that they all work on disjoint sets of dual variables.
+
+
+\begin{algorithm}[H]
+\label{alg:cdca}
+\caption{\algname: Communication-Efficient Distributed Dual Coordinate Ascent}
+\SetKwInput{Init}{Initialize}
+\SetKwFor{Forloop}{for}{}{end}
+\SetAlgoLined
+\KwIn{$T \ge 1, $ scaling parameter $1\le \beta_K \le K$ (default: $\beta_K:=1$). }
+\KwData{$\{(\x_i,y_i)\}_{i=1}^n$ distributed over $K$ machines}
+\Init{$\av_{[k]}^{(0)} \gets \0$ for all machines $k$, and $\wv^{(0)} \gets \0$}
+\Forloop{ $t = 1,2, \dots ,T$}{
+	%\textit{broadcast} $\wv^{(t-1)}$ \\
+	\Forloop{{\bfseries all machines $k = 1, 2, \dots ,K$ in parallel}}{
+	$(\Delta\av_{[k]},\Delta\wv_{k}) \gets \localalgname(\av^{(t-1)}_{[k]},\wv^{(t-1)})$ \\
+	$\av^{(t)}_{[k]} \gets \av^{(t-1)}_{[k]} + \frac{\beta_K}{K} \Delta\av_{[k]}$ \\
+	}
+    \textit{reduce} $\wv^{(t)} \gets \wv^{(t-1)} + \frac{\beta_K}{K} \sum_{k=1}^K \Delta \wv_{k}$ \\
+}
+%\KwOut{$\wv^{(S)}$}
+\end{algorithm}
+
+
+In each round, the $K$ workers in parallel perform some steps of an arbitrary optimization method, applied to their local data.  This internal procedure tries to maximize the dual formulation (\ref{eq:sdcaDual}), only with respect to their own local dual variables. We call this local procedure \localalgname, as specified in the template Procedure \ref{proc:localDualMethod}.
+Our core observation is that the necessary information each worker requires about the state of the other dual variables can be very compactly represented by a single primal vector $\wv\in\R^d$, without ever sending around data or dual variables between the machines.
+
+
+\SetAlgoSkip{}
+\begin{procedureCustom}%[H]
+\caption{\localalgname: Dual algorithm for prob. \eqref{eq:sdcaDual} on a single coordinate block~$k$}
+\label{proc:localDualMethod}
+\SetKwInput{Init}{Initialize}
+\SetKwFor{Forloop}{for}{}{end}
+\SetAlgoLined
+\KwIn{Local $\av_{[k]}\in\R^{n_k}$, and $\wv\in\R^d$ consistent with other coordinate blocks of $\av$ s.t. $\wv = A\av$}
+\KwData{Local $\{(\x_i,y_i)\}_{i=1}^{n_k}$} %\mathcal{I}_k
+\KwOut{$\Delta\av_{[k]}$ and $\Delta\wv := A_{[k]} \Delta\av_{[k]}$ }
+\end{procedureCustom}
+
+\SetAlgoSkip{}
+\begin{procedureCustom}%[H]
+\caption{\localSDCA: SDCA iterations for problem \eqref{eq:sdcaDual} on a single coordinate block~$k$}
+\label{proc:localSDCA}
+\SetKwInput{Init}{Initialize}
+\SetKwFor{Forloop}{for}{}{end}
+\SetAlgoLined
+\KwIn{$H \ge 1$, $\av_{[k]}\in\R^{n_k}$, and $\wv\in\R^d$ consistent with other coordinate blocks of $\av$ s.t. $\wv = A\av$}
+\KwData{Local $\{(\x_i,y_i)\}_{i=1}^{n_k}$} %\mathcal{I}_k
+\Init{$\wv^{(0)} \gets \wv$,\, $\Delta \av_{[k]} \gets {\bf 0} \in \R^{n_k}$}
+	\Forloop{$h = 1, 2, \dots ,H$}{
+		\textit{choose} $i \in \{1,2,\dots,n_k\}$ \textit{uniformly at random} \\  %TODO: make clear the data is local!! $i \in \mathcal{I}_k$
+		\textit{find} $\Delta\alpha$ \textit{maximizing } $ % \gets \argmax_{\Delta\alpha} 
+		    - \frac{\lambda n}{2}  \norm{ \wv^{(h-1)} +\frac{1}{\lambda n} \Delta\alpha\,\x_i }^2 
+		    - \ell_i^*\big(-(\alpha_i^{(h-1)}+\Delta\alpha)\big)$ \\
+		$\alpha_i^{(h)}\gets \alpha_i^{(h-1)} + \Delta\alpha$ \\ % too many variables
+		$(\Delta \alpha_{[k]})_i \gets (\Delta \alpha_{[k]})_i + \Delta\alpha$ \\
+		$\wv^{(h)} \gets \wv^{(h-1)} + \frac{1}{\lambda n}\Delta\alpha\,\x_i$ \\
+		%$\Delta \wv_{(k)} \gets \Delta\wv_{(k)} + \frac{1}{\lambda n}\Delta\alpha\x_i$ \\
+	}
+\KwOut{$\Delta\av_{[k]}$ and $\Delta\wv := A_{[k]} \Delta\av_{[k]}$ }
+\end{procedureCustom}
+
+% TODO: make it more obvious that the alpha updates are local!!
+
+Allowing the subroutine to process more than one local data example per round dramatically reduces the amount of communication between the workers.
+By definition, \algname in each outer iteration only requires communication of a single vector for each worker, that is $\Delta \wv_{k} \in \R^d$. Further, as we will show in Section \ref{theory}, \algname inherits the convergence guarantee of any %TODO: be more precise about the assumptions here
+algorithm run
+locally on each node in the inner loop of Algorithm \ref{alg:cdca}. 
+We suggest to use randomized dual coordinate ascent (SDCA) \cite{ShalevShwartz:2013wl} as the internal optimizer in practice, as implemented in Procedure \ref{proc:localSDCA}, and also used in our experiments.
+
+%\paragraph{Communication-Efficient Distributed Coordinate Ascent.}
+%The mini-batch algorithm of \cite{Takac:2013ut} requires
+%communication between nodes after each round of coordinate updates.
+%Specifically, the primal variable $\bm{w}^{(t)}$ in \eqref{eq:sdcaPrimal}
+%is updated via the rule $\bm{w}^{(t)} \gets \bm{w}^{(t-1)} + \Delta \av_i
+%\bm{x}_i$ for each coordinate $i$ which is updated using
+%\eqref{eq:sdcaDual}. To achieve fast convergence it is desirable to
+%update many coordinates per iteration, in which case potentially a large
+%amount of communication is required between nodes at each iteration.
+%Conceivably, a useful savings in running time can be realized by
+%performing additional rounds of optimization locally on each node before
+%broadcasting updates to the primal vector $\bm{w}_t$. To investigate
+%this, we studied the Communication-Efficient Dual Coordinate Ascent algorithm
+%(\algname) (Algorithm \ref{alg:cdca}).
+%For each node $k=1,\dots,K$
+%and at each step of the algorithm, we perform $n_k$ rounds of stochastic
+%dual coordinate ascent % or some other algorithm
+%locally (i.e., without communicating with other
+%machines.) 
+%We then broadcast the accumulated updates via the reduce step
+%$\wv^{(t)} \gets \wv^{(t-1)} + \frac{\beta_K}{K} \sum_{k=1}^K \Delta \wv_{(k)}$, which in the default case $\beta_K:=1$ corresponds to averaging the updates $\Delta\wv$ (not the models $\wv$ themselves) between the machines.
+
+%On the other hand, the step-size $\beta_K:=1$ taken by the algorithm is increasingly
+%conservative as the number of nodes $K$ grows, such that convergence
+%can slow even as more computational effort is being expended per outer
+%iteration. We show empirically that more aggressive step sizes $1<\beta_K \le K$ can
+%be used in practice, and it remains an open problem to characterize instances for which more aggressive step sizes can be taken while still
+%obtaining provable convergence at a fast rate.
+
+\paragraph{Notation.} In the same way the data is partitioned across the $K$ worker machines, we write the dual variable vector as $\av = (\av_{[1]},\dots,\av_{[K]})%\footnote{Correct mathematical notation would be $(\av_{[1]}^T,\dots,\av_{[K]}^T)^T$, but we wanted to keep notation simple.} 
+\in \R^n$ with the corresponding coordinate blocks $\av_{[k]}\in\R^{n_k}$ such that $\sum_k n_k = n$.
+The submatrix $A_{[k]}$ collects the columns of $A$ (i.e. rescaled data examples) which are available locally on the $k$-th worker. 
+The parameter $T$ determines the number of outer iterations of the algorithm, while when using an online internal method such as \localSDCA, then the number of inner iterations $H$ determines the computation-communication trade-off factor.
+
+
+
+%
+\section{Convergence Analysis} \label{theory}
+
+
+%{\bf Setup:}
+%In the same way the data is partitioned between the $K$ worker machines, we write the dual variable vector as $\av = (\av_{[1]},\dots,\av_{[K]})\footnote{The correct mathematical notation would be $\av = (\av_{[1]}^T,\dots,\av_{[K]}^T)^T$, but we wanted to keep the notation simple.} \in \R^n$ with the coordinate blocks $\av_{[k]}\in\R^{n_k}$ such that $\sum_k n_k = n$.
+Considering the dual problem \eqref{eq:sdcaDual}, we define the local suboptimality on each coordinate block as: 
+\begin{equation}\label{eq:suboptimality}
+\suboptlocal(\av) := 
+\max_{\hat \av_{[k]} \in \R^{n_k}} 
+D((\av_{[1]},\dots,\hat \av_{[k]},\dots,\av_{[K]})) - D((\av_{[1]},\dots,\av_{[k]},\dots,\av_{[K]})),
+\end{equation} that is how far we are from the optimum on block $k$ with all other blocks fixed.
+Note that this differs from the global suboptimality %, which we denote as $\subopt(\av) := 
+$\max _{\hat \av} D(\hat \av) - D((\av_{[1]},\dots,\av_{[K]}))$.
+
+\begin{assumption}[Local Geometric Improvement of \localalgname]\label{asm:localImprobvment}
+We assume that there exists $\Theta\in [0,1)$ such that for any given $\av$, \localalgname when run on block $k$ alone returns a
+(possibly random) update $\Delta \av_{[k]}$
+such that
+\begin{align}\label{eq:localGeometricRate}
+ \E[\epsilon_{D,k}((\av_{[1]},\dots,\av_{[k-1]},\av_{[k]}+\Delta \av_{[k]},
+ \av_{[k+1]},\dots, \av_{[K]}  )) ]
+  \leq \Theta \cdot \epsilon_{D,k}( \av ).
+\end{align}
+\end{assumption}
+
+ 
+Note that this assumption is satisfied for several available implementations of the inner procedure \localalgname, in particular for \localSDCA, as shown in the following Proposition.
+
+From here on, we assume that the input data is scaled such that $\|\x_i\|\leq 1$ for all datapoints. Proofs of all statements are provided in the supplementary material.%appendix
+
+\begin{proposition}\label{prop:smoothSDCApower}
+Assume the loss functions $\ell_i$ are $(1/\gamma)$-smooth. Then for using \localSDCA, Assumption \ref{asm:localImprobvment} holds with\vspace{-2mm}
+\begin{equation}\label{eq:asfkpvfwaf}
+ \Theta = \left(  1-\frac{\lambda n \gamma}{1+\lambda n \gamma} \frac1{\tilde n} \right)^H.
+\end{equation}
+where $\tilde n := \max_k n_k$ is the size of the largest block of coordinates.
+\end{proposition}
+
+
+%TODO: Dealing with the non-smooth loss case (in which that additional additive error term $G^{(t)}$ does not vanish anymore, but becomes the Lipschitz constant. In that case we'd follow their Theorem 2. But let's first write up the smooth-loss case, which is slightly more elegant)
+
+\begin{theorem}\label{thm:convergence}
+Assume that Algorithm \ref{alg:cdca} is run for $T$ outer iterations on $K$ worker machines, 
+with the procedure \localalgname having local geometric improvement $\Theta$, and let $\beta_K:=1$.
+Further, assume the loss functions $\ell_i$ are $(1/\gamma)$-smooth.
+Then the following geometric convergence rate holds for the global (dual) objective:
+\begin{equation}\label{eq:convergenceResult}
+\E[D(\av^*) - D(\av^{(T)})]
+\leq 
+\left(1-(1-\Theta)
+ \frac1K
+  \frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma }
+\right)^T     \left(D(\av^*) - D(\av^{(0)})\right).
+\end{equation}
+Here $\sigma$ is any real number satisfying
+\begin{align}\label{eq:sigma}
+ \sigma
+\geq%-----------------------------------------
+\sigma_{\min} := \max_{\av \in \R^n}
+\lambda^2 n^2 %or alternatively could use the data matrix X instead of the scaled A matrix
+\frac{ \textstyle{\sum}_{k=1}^K   
+  \norm{ A_{[k]}   \av_{[k]} }^2  -
+  \norm{ A \av }^2 
+   }
+   {\norm{ \av }^2   } \geq 0.
+\end{align}
+\end{theorem}
+\begin{lemma}\label{lem:sigmaBound}
+If $K=1$ then $\sigma_{\min}=0$.
+For any $K\geq 1$, when assuming $\|\x_i\|\leq 1 \ \ \forall i$, we have 
+\[
+0 \le \sigma_{\min} \le \tilde n .
+\]
+Moreover, if datapoints between different workers are orthogonal, i.e. $(A^TA)_{i,j} = 0$ $\forall i,j$ such that $i$ and $j$ do not belong to the same part, then $\sigma_{\min}=0$.
+\end{lemma}
+If we choose $K=1$ then, Theorem \ref{thm:convergence} together with Lemma \ref{lem:sigmaBound} implies that
+\[
+\E[D(\av^*) - D(\av^{(T)})]
+\leq 
+\Theta^T     \left(D(\av^*) - D(\av^{(0)})\right),
+\]
+as expected, showing that the analysis is tight in the special case $K=1$. 
+More interestingly, we observe that for any $K$, in the extreme case when the subproblems are solved to optimality
+(i.e. letting $H\to \infty$ in \localSDCA), then the algorithm as well as the convergence rate match
+that of serial/parallel \emph{block-coordinate descent} \cite{Richtarik:2014fe,Richtarik:2012vf}.
+
+
+\paragraph{Note:}
+If choosing the starting point as $\av^{(0)} := {\bf 0}$ as in the main algorithm, then it is known that $D(\av^*) - D(\av^{(0)})\leq 1$ (see e.g. Lemma 20 in \cite{ShalevShwartz:2013wl}).
+%\begin{remark}
+%Consider a balanced distribution of data across workers, i.e. $\tilde n = \frac{n}{K}$.
+%Moreover, consider that \localSDCA
+%was used with a $(1/\gamma)$-smooth loss functions $\ell_i$.
+%Choosing
+%$
+% H  \geq \frac { 1}K \frac{1+\lambda n \gamma}{\lambda  \gamma}    \log 100  
+%$
+%gives $
+%\Theta\overset{\eqref{eq:asfkpvfwaf}}{\leq} 0.01$ 
+%
+%
+%%\E[D(\av^*) - D(\av^{(T)})]
+%%\overset{\eqref{eq:convergenceResult}}{\leq} 
+%
+% 
+%\begin{equation}
+% T     \geq 
+%1.02
+%  \frac{ 1 + K \lambda   \gamma }    
+%       {\lambda   \gamma }       
+%       \log \frac1 \epsilon
+%\end{equation}
+%\end{remark}
+ 
+
+
+%(And it would be nice to extend this to the duality gap also, which works analogously to the SDCA proof, but not pulled out to the outer level. Use that the global gap is the sum of the $K$ local ones, as shown by Thomas. Maybe let's leave this for the journal version :))
+
+
+
+
+
+
+
+%
+\section{Related Work}\label{relatedwork}
+
+
+%%%%%% primal-dual methods %%%%%%
+\paragraph{Distributed Primal-Dual Methods.}
+Our approach is most closely related to recent work by~\cite{Yang:2013vl,Yang:2013ui}, which generalizes the 
+distributed optimization method for linear SVMs as in \cite{Yu:2010ct} 
+to the primal-dual setting considered here
+(which was introduced by~\cite{ShalevShwartz:2013wl}).
+The difference between our approach and the `practical' method of \cite{Yang:2013vl}
+is that our internal steps directly correspond to coordinate descent iterations
+on the global dual objective (\ref{eq:sdcaDual}), for coordinates in the current 
+block, while in \cite[Equation~8]{Yang:2013ui} and~\cite{Yang:2013vl}, the inner
+iterations apply to a slightly different notion of the sub-dual problem defined 
+on the local data. In terms of convergence results, the analysis of \cite{Yang:2013vl}
+only addresses the mini-batch case without local updates, while the more recent paper~\cite{Yang:2013ui} shows a convergence rate for a variant of \algname with inner coordinate steps, but under the unrealistic assumption that the data is orthogonal
+between the different workers. In this case, the optimization problems become
+independent, so that an even simpler single-round communication scheme 
+summing the individual resulting models $\wv$ would give an exact solution. 
+Instead, we show a linear convergence rate for the full problem class of smooth 
+losses, without any assumptions on the data, in the same generality as the 
+non-distributed setting of~\cite{ShalevShwartz:2013wl}.
+
+While the experimental results in all papers \cite{Yu:2010ct,Yang:2013vl,Yang:2013ui} 
+are encouraging for this type of method, they do not yet provide a 
+quantitative comparison of the gains in communication efficiency, or compare to 
+the analogous SGD schemes that use the same distribution and 
+communication patterns, which is the main goal or our experiments in 
+Section \ref{experiments}.
+%
+For the special case of linear SVMs, the first paper to propose the same algorithmic
+idea was \cite{Yu:2010ct}, which used \textsf{\small LibLinear} in the
+inner iterations. However, the proposed algorithm \cite{Yu:2010ct} processes the blocks
+sequentially (not in the parallel or distributed setting). Also, it is
+assumed that the subproblems are solved to near optimality on each block
+before selecting the next, making the method essentially standard
+block-coordinate descent. While no convergence rate was given, the empirical
+results in the journal paper \cite{Yu:2012fp} suggest that running
+\textsf{\small LibLinear} for just one pass through the local data
+performs well in practice. Here, we prove this, quantify the communication efficiency,
+and show that fewer local steps can improve the overall performance.
+%furthermore they haven't realized that it can be made communication efficient
+For the {\textsc LASSO} case, \cite{Bradley:2011wq} has proposed a parallel coordinate
+descent method converging to the true optimum, which could potentially also be 
+interpreted in our framework here. %TODO: mention that here we would run CD on the primal?
+%%%%%%%%%% MARTIN: can you say briefly how this could be interpreted in our framework given that we don't consider an l1-reg primal? %%%%%%
+
+
+%TODO: be more precise on what rates it provides etc.. maybe cite history of the primal-dual rates?
+
+%TODO: cite "dual cached loops" a.k.a. StreamSVM \cite{Matsushima:2012vg}, which is a heuristic approach about selecting good subsets of points, built on top of  \cite{Yu:2010ct,Yu:2012fp}. they have code on http://www.stat.purdue.edu/~vishy , and are also included in the comparison with VW in that new blog post: http://fastml.com/comparing-large-scale-linear-learners/
+
+
+%%%%%%% mini-batch %%%%%%%%
+\paragraph{Mini-Batches.}
+Another closely related avenue of research includes methods that use \emph{mini-batches} to distribute updates. In these methods, a
+mini-batch, or sample, of the data examples is selected for processing at
+each iteration. All updates within the mini-batch are computed based on the
+same fixed parameter vector $\wv$, and then these updates are either added or
+averaged in a reduce step and communicated back to the worker machines. This concept has been studied for both SGD and SDCA, see e.g. \cite{Takac:2013ut,Takac:2014vq} for the SVM case.
+The so-called naive variant of \cite{Yang:2013vl} is essentially identical to mini-batch dual coordinate descent, with a slight difference in defining the sub-problems. 
+
+As is shown in \cite{Yang:2013vl} and below in Section \ref{experiments}, the performance of these algorithms suffers when processing large batch sizes, as they do not take local updates immediately into account. Furthermore, they are very
+sensitive to the choice of the parameter $\beta_b$, which controls the
+magnitude of combining all updates between $\beta_b:=1$ for (conservatively) averaging,
+and $\beta_b:=b$ for (aggressively) adding the updates (here we denote $b$ as
+the size of the selected mini-batch, which can be of size up to $n$). 
+This instability is illustrated by the fact that even the change of
+ $\beta_b:=2$ instead of $\beta_b:=1$ can lead to divergence of 
+coordinate descent (SDCA) in the simple case of just two
+coordinates~\cite{Takac:2013ut}
+.
+In practice it can be very difficult to choose the correct data-dependent parameter
+$\beta_b$ especially for large mini-batch sizes $b\approx n$, as the parameter
+range spans many orders of magnitude, and directly controls the step size of the resulting algorithm, and therefore the convergence
+rate \cite{Richtarik:2013us,Fercoq:2014ut}%hydra and hydra2
+.
+For sparse data, the work of \cite{Richtarik:2013us,Fercoq:2014ut} gives 
+some data dependent choices of $\beta_b$ which are safe.
+
+Known convergence rates for the mini-batch methods %e.g. $O(\frac{n}{b} + \frac{\beta_b}{b} \cdot \frac{1}{\lambda \varepsilon})$ iterations for SVM DCA, or simpler $O(\frac{\beta_b}{b} \cdot \frac{1}{\lambda T})$ error for SGD
+degrade linearly with the growing batch size $b\approx \Theta(n)$. More precisely, the improvement in objective function per example processed degrades with a factor of $\beta_b$ in \cite{Takac:2013ut,Richtarik:2013us,Fercoq:2014ut}.
+In contrast, our convergence rate as shown in Theorem \ref{thm:convergence} 
+only degrades with the much smaller number of worker machines $K$, which 
+in practical applications is often several orders of magnitudes smaller than the mini-batch size $b$.
+%TODO: should we say the following here as well?
+%In our algorithm, we can simply use safe averaging, or we can select the select 
+%a larger step size $\beta_K$ between $1$ and $K$, instead of between 
+%$1$ and $\Theta(n)$ as in the mini-batch methods.
+
+%Theoretical convergence results on mini-batched SDCA are known if $\beta$ is
+%chosen small enough (close enough to conservative averaging), and can be
+%bound by the spectral norm of the data for example.
+
+
+
+\paragraph{Single Round of Communication.} %also called one-shot averaging in \cite{Shamir:2014vf}
+One extreme is to consider methods with only a single round of
+communication (e.g. one map-reduce operation), as in
+\cite{Zhang:2013wq, Zinkevich:2010tj,Mann:2009tr}.
+The output of these methods is the average of $K$ individual models, trained only on the local data on each machine. In \cite{Zhang:2013wq}, the authors give conditions on the data and computing environment under which these one-communication algorithms may be sufficient. %TODO: say that \cite{Shamir:2013vf} shows that one-shot averaging can be really bad
+In general, however, the true optimum of the original problem (\ref{eq:sdcaPrimal})
+is \emph{not} the average of these $K$ models, no matter how 
+accurately the subproblems are solved \cite{Shamir:2014vf}.
+%An easy way to see this is to e.g. consider the SVM case, and think of all machines having a copy of the same data, except one machine having different data. Furthermore, if a single-round method would be possible, then a streaming method would follow immediately, which is not possible for the problem class (\ref{eq:sdcaPrimal}). Therefore, these type of methods (which we call \emph{local SGD} in our experiments) come without any guarantee of of convergence to the optimum.
+
+%If people want a reference for that claim, \cite{Shamir:2013vf,Shamir:2014vf} (ICML 2014) also discusses the same fact.
+
+\paragraph{Naive Distributed Online Methods, Delayed Gradients, and Multi-Core.}
+On the other extreme, a natural way to distribute updates is to let every machine
+send updates to the master node (sometimes called the ``parameter server'')
+as soon as they are performed.
+This is what we call the \emph{naive distributed SGD / CD} 
+%TODO: consistent notation with coordinate descent or ascent
+in our experiments. 
+The amount of communication for such naive distributed online methods is 
+the same as the number of data examples processed. In contrast to this, 
+the number of communicated vectors in our method is divided by $H$, 
+that is the number of inner local steps performed per outer iteration, which can 
+be $\Theta(n)$.
+
+%\paragraph{Delays.}
+The early work of \cite{Tsitsiklis:1986ee} introduced the nice framework of
+gradient updates where the gradients come with some delays, i.e. are based on
+outdated iterates, and shows some robust convergence rates.
+In the machine learning setting, \cite{Dekel:2012wm} and the later work of
+\cite{Agarwal:2011vo} have provided additional insights into these types of methods.
+However, these papers study the case of smooth objective functions of a sum
+structure, and so do not directly apply to general case we consider here.
+In the same spirit,~\cite{Niu:2011wo} %Hogwild 
+implements SGD with communication-intense updates after each example
+processed, allowing asynchronous updates again with some delay.
+For coordinate descent, the analogous approach was studied in \cite{Liu:2014wj}. %ICML 2014 hogwild CD (has recently obtained stronger convergence results than \cite{Niu:2011wo}, however the same communication efficiency drawback applies to that method.)
+Both methods \cite{Niu:2011wo,Liu:2014wj} are $H$ times less efficient in terms
+of communication when compared to \algname, and are designed for \emph{multi-core} 
+shared memory machines (where communication is as fast as memory access). 
+They require the same amount of communication as \emph{naive distributed SGD / CD}, 
+which we include in our experiments in Section~\ref{experiments}, and a 
+slightly larger number of iterations due to the asynchronicity.
+The $1/t$ convergence rate shown in 
+\cite{Niu:2011wo} only holds under strong sparsity assumptions on the data.
+A more recent paper \cite{Duchi:2013te} deepens the understanding of such 
+methods, but still only applies to very sparse data.
+For general data,~\cite{Balcan:2012tc} theoretically shows that
+$1/\varepsilon^2$ communications rounds of single vectors are enough to
+obtain $\varepsilon$-quality for linear classifiers, with the rate 
+growing with~$K^2$ in the number of workers. Our new analysis here makes the
+dependence on $1/\varepsilon$ logarithmic.
+\vspace{-3mm}
+
+
+%TODO: maybe cite \cite{Shamir:2013vf} (ICML 2014), who address communication, but do newton steps
+
+
+
+%
+\section{Experiments} \label{experiments}
+
+In this section, we compare \algname to traditional mini-batch versions of
+stochastic dual coordinate ascent and stochastic gradient descent, as well as
+the locally-updating version of stochastic gradient descent. We implement
+mini-batch SDCA (denoted mini-batch-CD) as described in
+\cite{Takac:2013ut,Yang:2013vl}. The SGD-based methods are mini-batch and
+locally-updating versions of Pegasos \cite{ShalevShwartz:2010cg}, differing
+only in whether the primal vector is updated locally on each inner iteration
+or not, and whether the resulting combination/communication of the updates is
+by an average over the total size $KH$ of the mini-batch (mini-batch-SGD) or
+just over the number of machines $K$ (local-SGD). 
+For each algorithm, we additionally study the effect of scaling the
+average by a parameter~$\beta_K$, as first described in~\cite{Takac:2013ut},
+while noting that it is a benefit to avoid having to tune this data-dependent
+parameter.
+
+We apply these algorithms to standard hinge loss $\ell_2$-regularized 
+support vector machines, using implementations written in
+\textsf{\small Spark} on m1.large Amazon EC2 instances \cite{Zaharia:2012ve}.
+Though this non-smooth case is not yet covered in our theoretical analysis,
+we still see remarkable empirical performance. Our results 
+indicate that \algname is able to converge to $.001$-accurate solutions
+nearly~$25\times$ as fast compared the other algorithms, when all use 
+$\beta_K=1$. 
+The datasets used in these analyses are summarized in Table 
+\ref{tab:datasets}, and were
+distributed among $K= 4, 8$, and $32$ nodes, respectively. We use the same 
+regularization parameters as specified in
+\cite{ShalevShwartz:2010cg,Hsieh:2008bd}.
+
+%\begin{minipage}{.5\linewidth}
+%\begin{equation*}
+%\vspace{1em}
+%    \label{eq:svmPrimal}
+%    \min_{\wv \in\R^d} \left[\frac{\lambda}{2}\norm{\wv}^2 +
+%    \frac1n \sum_{i=1}^n \ell_{\text{\tiny hinge}}( \wv^T \x_i )\right],
+%\end{equation*}
+%\end{minipage}
+%\begin{minipage}{.5\linewidth}
+%\begin{align*}
+%    \label{eq:svmDual}
+%    \max_{\av\in\R^n} & \left[
+%    D(\av) := - \frac{\lambda}{2} \norm{ A\av }^2
+%    + \frac1n \sum_{i=1}^n \alpha_i y_i \right]
+%    \\
+%    \text{s.t.} &\quad  \av_i y_i \in [0,1].
+%\end{align*}
+%\end{minipage}
+%
+%where the loss function is the hinge-loss $\ell_i(t) = \ell_{\text{\tiny
+%hinge}}(t) := \max\{0, 1- y_i t\}$, which has the conjugate $\ell^*_i(-s) =
+%-s y_i$ with $\av_i y_i \in [0,1]$. The dual objective is given by:
+%
+%
+%We implement the SVM algorithms in Spark, a cluster computing language
+%designed for iterative workflows \cite{Zaharia:2012ve}. We compare the
+%algorithms using several datasets on m1-large Amazon EC2 instances.
+%Characteristics of each dataset are summarized in Table \ref{tab:datasets}.
+%Cov1 classifies the first level of forest coverage from USGS data. RCV1 is
+%the first class of the Reuters text classification dataset. Imagenet is a
+%massive image database organized according to the WordNet hierarchy. We use
+%a subset of 30 classes and perform one-vs-all classification. We use
+%regularization parameters for these datasets as specified in
+%\cite{ShalevShwartz:2010cg,Hsieh:2008bd}. The cluster sizes are: 4, 8, and
+%32 machines for cov1, RCV1, and Imagenet, respectively.
+
+\begin{table}[h]
+\caption{Datasets for Empirical Study \vspace{-1em}}
+\label{tab:datasets}
+   \begin{center}
+      \begin{tabular}{l| r | %p{1.5cm} | 
+      r | r | r | r}
+       \vspace{.25em}
+    {\small\textbf{Dataset}} & {\small\textbf{Training}} $(n)$ & %{\small\textbf{Testing}} & 
+    {\small\textbf{Features}} $(d)$ & {\small\textbf{Sparsity}} & {$\lambda$} & {\small\textbf{Workers}} $(K)$\\
+    \hline
+	cov & 522,911 & % 58,101 &
+	  54 & 22.22\% & $1e$-6 & 4 \\
+	rcv1 & 677,399 & % 20,242  &
+	  47,236 & 0.16\% & $1e$-6 & 8 \\
+	imagenet & 32,751 & % 5,426 &
+	  160,000 & 100\%& $1e$-5 & 32 \\
+      \end{tabular}
+   \end{center}\vspace{-2mm}
+\end{table}
+
+In comparing each algorithm and dataset, we analyze progress in
+primal objective value as a function of both time (Figure \ref{fig:BatchTime})
+and communication (Figure \ref{fig:BatchComm}). For all competing methods,
+we present the result for the batch size ($H$) that yields the best performance
+in terms of reduction in objective value over time. For the
+locally-updating methods (\algname and local-SGD), these tend to be
+larger batch sizes corresponding to processing almost all of the
+local data at each outer step. For the non-locally updating mini-batch
+methods, (mini-batch SDCA \cite{Takac:2013ut} and mini-batch 
+SGD~\cite{ShalevShwartz:2010cg}), these typically correspond to smaller
+values of $H$, as averaging the solutions to guarantee safe convergence
+becomes less of an impediment for smaller batch sizes.
+%\vspace{1em}
+\begin{figure}[H]
+\begin{subfigure}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/New_Cov_Best_Batches_Annotated.eps}
+\end{subfigure}
+\begin{subfigure}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/New_RCV_Best_Batches_Annotated.eps}
+\end{subfigure}
+\begin{subfigure}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/New_Imagenet_Best_Batches_Annotated.eps}
+\end{subfigure}\vspace{-1mm}
+\caption{\small Primal Suboptimality vs. Time for Best Mini-Batch Sizes (H): 
+For $\beta_K=1$, \algname converges more quickly than all other algorithms, 
+even when accounting for different batch sizes.}
+\label{fig:BatchTime}
+\end{figure}
+\vspace{-1em}
+\begin{figure}[H]
+\begin{subfigure}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/Cov_Comm.eps}
+\end{subfigure}
+\begin{subfigure}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/RCV_Comm.eps}
+\end{subfigure}
+\begin{subfigure}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/Imagenet_Comm.eps}
+\end{subfigure}\vspace{-1mm}
+\caption{\small Primal Suboptimality vs. \# of Communicated Vectors for Best 
+Mini-Batch Sizes (H): A clear correlation is evident between the number of 
+communicated vectors and wall-time to convergence 
+(Figure \ref{fig:BatchTime}).\vspace{-1mm}}
+\label{fig:BatchComm}
+\end{figure}
+
+
+First, we note that there is a clear correlation between the wall-time
+spent processing each dataset and the number of vectors communicated,
+indicating that communication has a significant effect on convergence 
+speed.
+We see clearly that \algname is able to converge to a more accurate
+solution in all datasets much faster than the other methods.
+On average, \algname reaches a .001-accurate solution for these
+datasets 25x faster than the best competitor. This is a testament
+to the algorithm's ability to avoid communication while still making
+significant global progress by efficiently combining the local updates
+of each iteration.
+The improvements are robust for both regimes $n\gg d$ and $n\ll d$.
+%, and also over different levels of sparsity of the data. 
+%TODO: comment more on sparsity in the methods or related work section
+
+\begin{figure}[h!]
+\begin{minipage}{.33\textwidth}
+\includegraphics[width=\linewidth]{figs/Batchsize_Effect.eps}\vspace{-1mm}
+\caption{\small Effect of $H$ on \algname.}
+\label{fig:BatchEffect}
+\end{minipage}\hfill
+\begin{minipage}{.66\textwidth}
+\includegraphics[width=.5\linewidth]{figs/Beta_Scaling_1.eps}
+\includegraphics[width=.5\linewidth]{figs/Beta_Scaling_2.eps}\vspace{-1mm}
+\caption{Best $\beta_K$ Scaling Values for $H=1e5$ and $H=100$.}
+\label{fig:BetaScaling}
+\end{minipage}
+\end{figure}
+%\end{subfigure}
+%\begin{subfigure}{.33\textwidth}
+%\includegraphics[width=\linewidth]{figs/Batchsize_Effect.eps}
+%\end{subfigure}
+%\begin{subfigure}{.33\textwidth}
+%\includegraphics[width=\linewidth]{figs/Batchsize_Effect.eps}
+%\end{subfigure}
+%\caption{Log Primal Suboptimality as a function of \# of Communicated Vectors for Best Batch Sizes (H)}
+%\end{figure}
+
+
+In Figure \ref{fig:BatchEffect} we explore the effect of $H$, 
+the computation-communication trade-off factor, on the
+convergence of \algname for the Cov dataset on a cluster of 4 nodes.
+As described above, increasing~$H$ decreases communication 
+but also affects the convergence properties of the algorithm. In 
+Figure~\ref{fig:BetaScaling}, we attempt to scale the averaging step of each
+algorithm by using various $\beta_K$ values, for two different batch sizes on
+the Cov dataset ($H=1e5$ and $H=100$). We see that though $\beta_K$ has a
+larger impact on the smaller batch size, it is still not enough to improve
+the mini-batch algorithms beyond what is achieved by \algname and local-SGD.
+
+%TODO: be precise what local-SGD is for us: say that we used the Pegasos 
+% 1/lambda t stepsize for t being the globally processed examples so far, 
+% not the local ones, right?
+
+
+
+%
+\section{Conclusion} \label{conclusion}
+
+We have presented a communication-efficient framework for distributed dual
+coordinate ascent algorithms that can be used to solve large-scale regularized
+loss minimization problems. This is crucial in settings where datasets must
+be distributed across multiple machines, and where communication amongst nodes
+is costly. We have shown that the proposed algorithm performs competitively on
+real-world, large-scale distributed datasets, and have presented the first
+theoretical analysis of this algorithm that achieves competitive convergence
+rates without making additional assumptions on the data itself.
+
+It remains open to obtain improved convergence rates for more aggressive
+updates corresponding to $\beta_K > 1$, which might be suitable for using the
+`safe' updates techniques of  \cite{Takac:2013ut} and the related expected
+separable over-approximations of \cite{Richtarik:2014fe,Richtarik:2012vf}, here applied to $K$
+instead of $n$ blocks.  Furthermore, it remains open to show convergence rates
+for local SGD in the same communication efficient setting as described here.
+
+
+
+%\subsubsection*{
+\paragraph{Acknowledgments.}
+We thank Shivaram Venkataraman, Ameet Talwalkar, and Peter Richt{\'a}rik for fruitful discussions. MJ acknowledges support by the Simons Institute for the Theory of Computing. 
+
+
+
+{\small
+\bibliographystyle{unsrt} %alpha %plain
+%\bibliography{../refs}
+\bibliography{bibliography}
+}
+
+
+\newpage
+\appendix
+
+
+%
+\section{Proof of Theorem \ref{thm:convergence} -- Main Convergence Theorem}
+
+\newcommand{\vsub}[2]{#1_{\langle[#2]\rangle}} %TODO: kill or think about it more
+
+In the following, for a given vector $\av_{[k]} \in \R^{n_k}$, we write $\vsub{\av}{k} \in \R^n$ for its zero-padded version which coincides with $\av_{[k]}$ on the $k$-th coordinate block, and is zero everywhere else.
+
+\begin{reptheorem}{thm:convergence}
+Assume that Algorithm \ref{alg:cdca} is run for $T$ outer iterations on $K$ worker machines, 
+with the procedure \localalgname having local geometric improvement $\Theta$, and let $\beta_K:=1$.
+Further, assume the loss functions $\ell_i$ are $(1/\gamma)$-smooth.
+Then the following geometric convergence rate holds for the global (dual) objective:
+\begin{equation*}%\label{eq:convergenceResult}
+\E[D(\av^*) - D(\av^{(T)})]
+\leq 
+\left(1-(1-\Theta)
+ \frac1K
+  \frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma }
+\right)^T     \left(D(\av^*) - D(\av^{(0)})\right).
+\end{equation*}
+Here $\sigma$ is any real number satisfying
+\begin{align*}%\label{eq:sigma}
+ \sigma
+\geq%-----------------------------------------
+\sigma_{\min} := \max_{\av \in \R^n}
+\lambda^2 n^2 %or alternatively could use the data matrix X instead of the scaled A matrix
+\frac{ \textstyle{\sum}_{k=1}^K   
+  \norm{ A_{[k]}   \av_{[k]} }^2  -
+  \norm{ A \av }^2 
+   }
+   {\norm{ \av }^2   } \geq 0.
+\end{align*}
+\end{reptheorem}
+%
+\begin{proof}
+%Let ${\bf I} \in \R^{n \times n}$ 
+%is identity matrix. Let 
+%$  \in \R^{n \times n_k}$ be a sub-matrix of ${\bf I}$ consisting of columns $i\in \mathcal{I}_k$ of ${\bf I}$.
+From the definition of the update performed by Algorithm \ref{alg:cdca} (for the setting of $\beta_K:=1$), we have
+$\av^{(t+1)}
+  =
+  \av^{(t)}
+  + \frac1K \sum_{k=1}^K   \vsub{ \Delta \av }{k}$.
+Let us estimate the change of objective function after one outer iteration.
+  Then using concavity of $D$ we have
+\begin{align*}
+D(\av^{(t+1)})
+ &=
+ D\left(\av^{(t)}
+  + \tfrac1K \textstyle{\sum}_{k=1}^K 
+      \vsub{\Delta \av}{k}
+     \right)
+  =
+  D\left(\tfrac1K \textstyle{\sum}_{k=1}^K (
+     \av^{(t)} + \vsub{\Delta \av}{k} )
+        \right)
+\\&\geq
+ \tfrac1K \textstyle{\sum}_{k=1}^K D(
+    \av^{(t)} + \vsub{\Delta \av}{k} ).
+\end{align*}
+Subtracting $D(\av^{(t)})$ from both sides and denoting by
+$\hat \av^*_{[k]}$ the local maximizer as in \eqref{eq:suboptimality}
+we obtain
+\begin{align*}
+D(\av^{(t+1)})-D(\av^{(t)})
+ &\geq
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \left[ D(
+    \av^{(t)} + \vsub{\Delta \av}{k}
+      )
+    -D(\av^{(t)}) \right]
+\\
+ &=
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \left[ D(
+    \av^{(t)} + \vsub{\Delta \av}{k}
+      )
+      -D((\av_{[t]}^{(1)},\dots,\hat\av^*_{[k]},\dots,\av_{[t]}^{(K)})) 
+      \right.
+      \\ &\quad \left.
+      +D((\av_{[t]}^{(1)},\dots,\hat\av^*_{[k]},\dots,\av_{[t]}^{(K)})) 
+    -D(\av^{(t)}) \right]
+\\
+&\overset{\eqref{eq:suboptimality}}{=}
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \left[
+ \suboptlocal(\av^{(t)})
+ - \suboptlocal(\av^{(t)}+   \Delta\vsub{\av}{k} )
+ \right].
+\end{align*}
+Considering the expectation of this quantity, we are now ready to use Assumption \ref{asm:localImprobvment} on the \emph{local geometric improvement} of the inner procedure. We have
+\begin{align*}
+\E[D(\av^{(t+1)})-D(\av^{(t)})\,|\,\av^{(t)}]
+ &\geq
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \E[
+  \suboptlocal(\av^{(t)})
+ - \suboptlocal(\av^{(t)}+   \Delta\vsub{\av}{k} )
+ \,|\, \av^{(t)} ]
+\\
+&\overset{\eqref{eq:localGeometricRate}}{\geq}
+ \tfrac1K  (1-\Theta) 
+ \textstyle{\sum}_{k=1}^K
+  \suboptlocal(\av^{(t)}) .
+\end{align*}
+It remains to bound 
+$\textstyle{\sum}_{k=1}^K \suboptlocal(\av^{(t)})$.
+\begin{align*}
+\textstyle{\sum}_{k=1}^K 
+  \suboptlocal(\av^{(t)})
+&\overset{\eqref{eq:suboptimality}}{=}  
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{ \textstyle{\sum}_{k=1}^K   
+\left[D((\av_{[1]},\dots,\hat \av_{[k]},\dots,
+\av_{[K]})) 
+- D((\av_{[1]},\dots,\av_{[k]},\dots,
+\av_{[K]}))
+\right] \right\}
+\\
+&\overset{\eqref{eq:sdcaDual}}{=}
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{
+  \tfrac1n \textstyle{\sum}_{i=1}^n
+ (-  \ell_i^*(-\hat \alpha_i)  
++ \ell_i^*(- \alpha^{(t)}_i)  )    
+ \right. \\ &\quad\quad\quad \left. 
+ +
+\tfrac{\lambda}{2}  \textstyle{\sum}_{k=1}^K   
+\left[
+ -  \norm{ A\av^{(t)} + A_{[k]} (\hat \av_{[k]} - \av^{(t)}_{[k]}) }^2   
++  \norm{ A \av^{(t)} }^2
+\right] \right\}
+\\
+&=
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{
+ D(\hat \av)
+ -D(\av^{(t)})
++\tfrac\lambda 2 \|A \hat\av\|^2
+-\tfrac\lambda 2 \|A \av^{(t)}\|^2
+ \right. \\ &\quad\quad\quad \left.
+ +
+\tfrac{\lambda}{2}  \textstyle{\sum}_{k=1}^K   
+\left[
+ -  \norm{ A\av^{(t)} + A_{[k]} (\hat \av_{[k]} - \av^{(t)}_{[k]}) }^2   
++  \norm{ A \av^{(t)} }^2
+\right] \right\}
+\\
+&=
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{
+ D(\hat \av)
+ -D(\av^{(t)})
+% \right. \\ &\quad\quad\quad \left.
++\tfrac\lambda 2
+\left[
+ \|A \hat\av\|^2
+- \|A \av^{(t)}\|^2
+\right]\right.
+\\&\quad\quad\quad 
+\left.
++\tfrac\lambda 2
+\left[
+ -  
+  2 ( A\av^{(t)} )^T  A ( \hat \av -  \av^{(t)} ) 
+-   \textstyle{\sum}_{k=1}^K   
+  \norm{  A_{[k]} (\hat \av_{[k]} - \av^{(t)}_{[k]}) }^2   
+  \right]
+ \right\}
+\end{align*}
+\begin{align*}
+&=%-----------------------------------------
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{
+ D(\hat \av)
+ -D(\av^{(t)})
+% \right. \\ &\quad\quad\quad \left.
++\tfrac\lambda 2
+\left[
+ \|A \hat\av\|^2
++ \|A \av^{(t)}\|^2
+ -  
+  2 ( A\av^{(t)} )^T  A \hat \av 
+\right]\right.
+\\&\quad\quad\quad 
+\left.
++\tfrac\lambda 2
+\left[
+-   \textstyle{\sum}_{k=1}^K   
+  \norm{  A_{[k]} (\hat \av_{[k]} - \av^{(t)}_{[k]}) }^2   
+  \right]
+ \right\}
+ \\
+&=%-----------------------------------------
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{
+ D(\hat \av)
+ -D(\av^{(t)})
+% \right. \\ &\quad\quad\quad \left.
++\tfrac\lambda 2
+\left[
+  \|A (\av^{(t)} -\hat\av  )\|^2
+\right]\right.
+\\&\quad\quad\quad 
+\left.
++\tfrac\lambda 2
+\left[
+-   \textstyle{\sum}_{k=1}^K   
+  \norm{  A_{[k]} (\hat \av_{[k]} - \av^{(t)}_{[k]}) }^2   
+  \right]
+ \right\}
+\\
+&\geq%-----------------------------------------
+ \max_{ \hat \av \in \R^{n}} 
+ \left\{
+ D(\hat \av)
+ -D(\av^{(t)})
+-\tfrac \sigma {2 \lambda n^2}
+  \norm{    \hat \av -  \av^{(t)}   }^2   
+ \right\},
+\end{align*}
+by the definition \eqref{eq:sigma} of the complexity parameter $\sigma$.
+Now, we can conclude the bound as follows:
+\begin{align*}
+\textstyle{\sum}_{k=1}^K 
+  \suboptlocal(\av^{(t)})
+&\geq
+  \max_{ \hat \av \in \R^{n}} 
+ \left\{
+ D(\hat \av)
+ -D(\av^{(t)})
+-\tfrac \sigma {2 \lambda n^2}
+  \norm{    \hat \av -  \av^{(t)}   }^2   
+ \right\}
+\\%--------------------
+&\geq
+ \max_{\eta \in [0,1]}
+ \left\{
+ D(\eta \av^* + (1-\eta)\av^{(t)})-D(\av^{(t)})
+  - \frac{1}{2}
+   \frac {\sigma \eta^2} {\lambda n^2}
+  \|  \av^* -\av^{(t)}\|^2
+ \right\}
+\\
+&\geq
+ \max_{\eta \in [0,1]}
+ \Big\{
+ \eta D( \av^* )
++
+ (1-\eta) D(\av^{(t)})-D(\av^{(t)})\\
+ & \hspace{2cm}
++
+ \frac{\gamma \eta (1-\eta)}{2n} \|\av^* - \av^{(t)}  \|^2
+  - \frac{1}{2}
+   \frac {\sigma \eta^2} {\lambda n^2}
+  \|  \av^* -\av^{(t)}\|^2
+ \Big\}
+\\
+%--------------------
+&\geq
+ \max_{\eta \in [0,1]}
+ \left\{
+ \eta (D( \av^* )
+- D(\av^{(t)}))
++
+\frac \eta{2n}
+\left(
+ \gamma (1-\eta)
+ -
+   \frac {\sigma \eta} {\lambda n}
+\right)
+  \|\av^* - \av^{(t)}  \|^2
+ \right\}.
+\end{align*}
+Choosing
+$
+  \eta^*
+   :=\frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma } \in [0,1]
+$
+gives
+\begin{align*}
+\textstyle{\sum}_{k=1}^K 
+  \suboptlocal(\av^{(t)}) 
+  \geq
+ \frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma } (D( \av^* )
+- D(\av^{(t)})).
+\end{align*}
+Therefore, we have
+\begin{eqnarray*}
+\E[D(\av^{(t+1)})-D(\av^*)+D(\av^*)-D(\av^{(t)}) \,|\, \av^{(t)}]
+ &\geq&
+(1-\Theta)
+ \frac1K
+  \frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma } (D( \av^* )
+- D(\av^{(t)})),
+\\
+\E[D(\av^*)-D(\av^{(t+1)}) \,|\, \av^{(t)}]
+ &\leq&
+\left[1-(1-\Theta)
+ \frac1K
+  \frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma }
+\right]   
+    (D( \av^* )
+- D(\av^{(t)})).
+\end{eqnarray*}
+This implies the claim \eqref{eq:convergenceResult} of the theorem.
+\end{proof}
+
+
+
+%
+\section{Proof of Proposition \ref{prop:smoothSDCApower} -- Local Improvement of the Inner Optimizer}
+
+
+\subsection{Decomposition of the Duality Structure over the Blocks of Coordinates}
+The core concept in our new analysis technique is the following primal-dual structure on each local coordinate block.
+Using this, we will show below that all steps of \localalgname can be interpreted as performing coordinate ascent steps on the \emph{global} dual objective function $D(\av)$, with the coordinates changes restricted to the $k$-th block, as follows.
+
+For concise notation, we write $\{\mathcal{I}_k\}_{k=1}^K$ for the partition of data indices $\{1,2,\dots,n\}$ between the workers, such that $|\mathcal{I}_k|=n_k$. In other words, each set $\mathcal{I}_k$ consists of the indices of the $k$-th block of coordinates (those with the dual variables $\av_{[k]}$ and datapoints $A_{[k]}$, as available on the $k$-th worker).
+
+Let us define the \emph{local dual problem} as
+\begin{equation}\label{eq:localDual}
+\max_{\av_{[k]} \in\R^{n_k}}    \Big[
+    \ \  D_k(\av_{[k]};\overline\wv) 
+    :=\ - \frac{\lambda}{2} \norm{ \overline\wv + A_{[k]} \av_{[k]} }^2
+      - \frac1n \sum_{i\in\mathcal{I}_k} \ell_i^*(-\alpha_i) 
+      %- \frac1n \sum_{i\in [n]\setminus[k]} \ell_i^*(-\alpha^{(0)}_i)
+      + \frac \lambda 2 \| \overline\wv\|^2
+     \ \ \Big] .
+\end{equation}
+The definition is valid for any fixed vector $\overline\wv$. Here the reader should think of  $\overline\wv$ as representing the status of those dual variables $\av_i$ which are \emph{not} part of the active block $k$. The idea is the following:
+For the choice of $\overline\wv := \sum_{k'\ne k} A_{[k']}\av^{(0)}_{[k']}$, it turns out that the local dual objective, as a function of the local variables $\av_{[k]}$, is identical the global (dual) objective, up to a constant independent of $\av_{[k]}$, or formally
+\[
+D_k(\av_{[k]};\overline\wv) = D\big(\av^{(0)}_{[1]},\dots,\av_{[k]},\dots,\av^{(0)}_{[K]}\big) + C'
+    ~~~~~~ \forall\ \av_{[k]} \in\R^{n_k} \ .
+\]
+%This constant is $C' = - \frac1n \sum_{i\in [n]\setminus[k]} \ell_i^*(-\alpha^{(0)}_i) + \frac \lambda 2 \| \overline\wv\|^2$.
+%TODO: think how to define it differently to avoid the whole shift altogether.
+
+%For example, if Here we used the notation $\wv_k := A_{[k]}\av^{(0)}_{[k]}$ and $\overline\wv := \sum_{k'\ne k} A_{[k']}\av^{(0)}_{[k']}$, such that $\wv^{(0)} = \overline\wv + \wv_k $.
+
+
+%Here is the local dual thing we're optimizing: (it only depends on the coordinates in that block~$k$)
+%We write \[
+%\wv = A \av =: \wv^{(0)} + \Delta\wv_k =: \wv^{(0)} + A_{[k]} \Delta\av_{[k]}
+%\] and $\wv^{(0)} =: \av_0 + \Delta\av_{[k]}$
+%\[
+%\max_{\av_{[k]} \in\R^{n_k}}  \quad \left[ D(\av_{[k]}) = D(\av) 
+%    = - \frac{\lambda}{2} \norm{ \wv^{(0)} + A \Delta\av_{[k]} }^2
+%    - \frac1n \sum_{i\in[k]} \ell_i^*(-\alpha_i) 
+%    - \frac1n \sum_{i\in [n]\setminus[k]} \ell_i^*(-\alpha_i)  \right],
+%\]
+%question is what's the corresponding conjugate primal.
+
+The following proposition observes that the defined local problem has a very similar duality structure as the original problem~\eqref{eq:sdcaPrimal} with its dual \eqref{eq:sdcaDual}.
+\begin{proposition}
+For $\overline\wv\in\R^d$, let us define the ``local'' primal problem on the $k$-th block as
+\begin{equation}\label{eq:localPrimal}
+\min_{\wv_k \in\R^d} \quad \Big[ \ \ P_k(\wv_k;\overline\wv) := \frac1{n} 
+                       \sum_{i\in\mathcal{I}_k}
+                       \ell_i( (\overline\wv+\wv_k)^T \x_i )  
+                       + \frac{\lambda}{2}\norm{\wv_k}^2
+                       \ \ \Big] .
+\end{equation}
+Then the dual of this formulation (with respect to the variable $\wv_k$) is given by the local dual problem~\eqref{eq:localDual} for the $k$-th coordinate block.
+\end{proposition}
+\begin{proof}
+The dual of this problem is derived by plugging in the definition of the conjugate function $\ell_i( (\overline\wv+\wv_k)^T \x_i ) = \max_{\alpha_i} -\alpha_i (\overline\wv+\wv_k)^T \x_i - \ell^*_i(-\alpha_i)$, which gives
+\begin{align*}
+ & \min_{\wv_k \in\R^d} \quad \frac1{n} 
+                       \sum_{i\in\mathcal{I}_k} \max_{\alpha_i} \big( -\alpha_i (\overline\wv+\wv_k)^T \x_i - \ell^*_i(-\alpha_i) \big)  
+                       + \frac{\lambda}{2}\norm{\wv_k}^2    \\
+= \ &  \frac1{n}   \sum_{i\in\mathcal{I}_k} \max_{\alpha_i} \ - \ell^*_i(-\alpha_i) + \min_{\wv_k \in\R^d} \left[ -\alpha_i (\overline\wv+\wv_k)^T \x_i
+                       + \frac{\lambda}{2}\norm{\wv_k}^2  \right]    \\
+= \ &  \max_{\av\in\R^{n_k}}\  \frac1{n}   \sum_{i\in\mathcal{I}_k} - \ell^*_i(-\alpha_i) + \min_{\wv_k \in\R^d} \left[ - \frac1{n} \sum_{i\in\mathcal{I}_k} \alpha_i (\overline\wv+\wv_k)^T \x_i
+                       + \frac{\lambda}{2}\norm{\wv_k}^2  \right] .
+\end{align*}
+The first-order optimality condition for $\wv_k$, by setting its derivative to zero in the inner minimization, can be written as
+\[
+\wv_k^* =  \frac1{\lambda n}   \sum_{i\in\mathcal{I}_k} \alpha_i \x_i  = A_{[k]} \av_{[k]}
+\]
+plugging this back in, we have that the inner minimization becomes
+\begin{align*}
+ & -\lambda \frac1{\lambda n}   \sum_{i\in\mathcal{I}_k} \alpha_i (\overline\wv+\wv_k^*)^T \x_i   + \frac{\lambda}{2}\norm{\wv_k^* }^2  \\
+=& -\lambda (\overline\wv+\wv_k^*)^T\wv_k^* + \frac{\lambda}{2}\norm{\wv_k^* }^2
+\end{align*}
+Writing the resulting full problem, we obtain precisely the local dual problem \eqref{eq:localDual} for the $k$-th coordinate block.
+\end{proof}
+
+Using these local subproblems, we have the following nice structure of local and global duality gaps: \\
+\[
+g_k(\av) := P_k(\wv_k;\overline\wv)-D_k(\av_{[k]};\overline\wv)
+~~~~~~~~\text{ and }~~~~~~~~
+g(\av) := P(\wv(\av))-D(\av)
+\] \\
+Here the contributions of all blocks except the active one are collected in $\overline\wv := \wv - \wv_k$. Recall that we defined $\wv_k := A_{[k]}\av_{[k]}$ and $\wv := A\av$, so that $\wv = \sum_{k=1}^K \wv_k$.
+ 
+%% the following sum decomposition of the duality gaps is not needed currently
+%
+%\begin{lemma}\label{lem:gapSum}
+%The local duality gaps (on each block $k$) sum up to the global duality gap:
+%\[
+%\sum_k g_k(\av_{[k]}) = g(\av)  \ .\vspace{-1mm}
+%\]
+%\end{lemma}
+%\begin{proof}
+%\begin{align*}
+%P_k(\wv_k;\overline \wv_k) - D_k(\av_{[k]};\overline \wv_k) 
+%& = \frac{1}{n} \sum_{i \in [k]} \ell_i( (\wv_k+\overline \wv_k)^T \x_i) + \frac \lambda 2 \| \wv_k\|^2 \\
+%%
+%& - \frac 1n \sum_{i \in [k]} - \ell_i^*(-\alpha_i) +  \frac \lambda 2 \Big\| \underbrace{\frac {1}{\lambda n} \sum_{i \in [k]} \alpha_i \x_i }_{\wv_k} \Big\|^2
+%+ \frac {1}{n} \sum_{i \in [k]} \alpha_i \x_i^T \overline \wv_k \\
+%& = \frac 1n \sum_{i \in [k]} 
+%\left\{ 
+%\left( \ell_i( \wv^T \x_i ) + \ell_i^*(-\alpha_i) \right)
+%+  \alpha_i \x_i^T \overline \wv_k  
+%\right\}
+%+ \lambda \| \wv_k \|^2 \\
+%& = \frac 1n \sum_{i \in [k]} 
+%\left\{ \ell_i( \wv^T \x_i ) + \ell_i^*(-\alpha_i) \right\}
+%+ \lambda \wv_k^T ( \wv -\wv_k ) 
+%+ \lambda \| \wv_k \|^2 \\
+%& = \frac 1n \sum_{i \in [k]} 
+%\left( \ell_i( \wv^T \x_i ) + \ell_i^*(-\alpha_i) \right)
+%+ \lambda  \wv_k^T \wv  
+%\end{align*}
+%
+%So we get 
+%\begin{align*}
+%\sum_k P_k(\wv_k;\overline \wv_k) - D_k(\av_{[k]};\overline \wv_k) = 
+%\frac 1{n} \sum_{i =1}^n 
+%\left( \ell_i( \wv^T \x_i ) + \ell_i^*(-\alpha_i) \right)
+%+  \lambda \sum_k \wv_k^T \wv  
+%\\ =
+%\frac 1{n} \sum_{i =1}^n 
+%\left( \ell_i( \wv^T \x_i ) + \ell_i^*(-\alpha_i) \right)
+%+  \lambda \| \wv \|^2
+%= P(\wv) - D(\av)
+%\end{align*}
+%\end{proof}
+  
+ 
+
+
+
+
+
+\subsection{Local Convergence of \localSDCA}
+This section is just a small modification of results
+obtained in \cite{ShalevShwartz:2013wl}.
+
+Observe that the coordinate step performed by an iteration of 
+\localSDCA can equivalently be written as
+\begin{align}\label{eq:updateRule}
+ \Delta\alpha_i^* = \Delta\alpha_i^*\big( \av_{[k]}^{(h-1)}, \overline\wv\big)
+% &=\argmax_{\Delta\alpha_i}
+% \left(
+% -\ell_i^*(-\alpha_i^{(h-1)}-\Delta\alpha_i)
+% -\frac{\lambda n}{2} \left\|  \overline\wv
+%   + \frac1{\lambda n} \sum_{i\in \mathcal{I}_k} \alpha_i^{(h-1)} \x_i + \frac1{\lambda n} \x_i \Delta\alpha_i  \right\|^2
+ %\right)
+%\\
+ &:=\argmax_{\Delta\alpha_i}
+ \left(
+ D_k(\av_{[k]}^{(h-1)}+e_i \Delta\alpha_i; \overline\wv )
+ \right).
+\end{align}
+For a vector $\overline\wv\in\R^d$.
+In other words, the step will optimize one of the local coordinates
+with respect to the local dual objective, which is identical to the global
+dual objective when the coordinates of the other blocks are kept fixed,
+as we have seen in the previous subsection.
+
+\begin{lemma}\label{lem:sdcaStep}
+Assume that $\ell^*_i$ is $\gamma$-strongly convex (where $\gamma\geq0$). Then for all iterations $h$ of \localSDCA and any $s\in[0,1]$ we have
+\begin{equation}\label{eq:asfavfawefvgwgea}
+\E[ D_k (  \av_{[k]}^{(h)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}^{(h-1)}; \overline\wv)]
+ \ \geq\  \frac{s}{n_k}
+ \big(P_k (  \wv_k^{(h-1)}; \overline\wv)
+ -
+  D_k (  \av_{[k]}^{(h-1)}; \overline\wv) \big)
+   -
+\frac{s^2}{2\lambda n^2}
+G^{(h)},
+\end{equation}
+ where
+$
+G^{(h)} := \frac{1}{n_k}
+ \sum_{i \in \mathcal{I}_k}
+ \left(
+  \|     \x_i\|^2 -
+   \frac{ \lambda n  \gamma(1-s)}{s}
+ \right)
+  (u_i^{(h)}- \alpha_i^{(h-1)})^2, $~
+    $-u_i^{(h-1)} \in \partial \ell_i(\x_i^T \wv^{(h-1)})$
+  and
+  $\wv^{(h-1)} = \overline\wv + A_{[k]}\av_{[k]}^{(h-1)}  $.
+\end{lemma}
+\begin{proof} %by definition of the dual \eqref{eq:sdcaDual}
+\begin{align*}
+&n \left[ D_k (  \av_{[k]}^{(h)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}^{(h-1)}; \overline\wv) \right] \\
+=&
+\underbrace{-
+     \ell^*_i( - \alpha_i^{(h)})
+    - \frac{\lambda n}{2}
+    \|\wv^{(h)}\|^2}_{A}
+-
+\underbrace{\left(
+-
+     \ell^*_i( -\alpha_i^{(h-1)})
+    - \frac{\lambda n}{2}
+    \|\wv^{(h-1)}\|^2
+\right)}_{B}.
+\end{align*}
+By the definition of the update \eqref{eq:updateRule} we have for all $s\in[0,1]$
+that
+\begin{align*}
+A&=
+\max_{\Delta\alpha_i}
+ -\ell_i^*(-\alpha_i^{(h-1)}-\Delta\alpha_i)
+ - \frac{\lambda n}{2}
+    \|\wv^{(h-1)} + \frac1{\lambda n }   \Delta\alpha_i  \x_i\|^2
+\\&\geq
+ -\ell_i^*(-\alpha_i^{(h-1)}-s (u_i^{(h)}- \alpha_i^{(h-1)}))
+ - \frac{\lambda n}{2}
+    \|\wv^{(h-1)} + \frac1{\lambda n }   s (u_i^{(h)}- \alpha_i^{(h-1)}) \x_i\|^2.
+\end{align*}
+From strong convexity we have
+\begin{align}\label{eq:asfdsafdacewfa}
+&\ell_i^*\left(-\alpha_i^{(h-1)}-s (u_i^{(h)}- \alpha_i^{(h-1)})\right)\nonumber\\
+\leq\ &
+s \ell_i^*(- u_i^{(h)} )
++
+(1-s)\ell_i^*(-\alpha_i^{(h-1)})
+-\frac{\gamma}{2} s(1-s)
+ (u_i^{(h)}- \alpha_i^{(h-1)})^2.
+\end{align}
+Hence
+\begin{align*}
+A&\overset{\eqref{eq:asfdsafdacewfa}}{\geq}
+-s \ell_i^*(- u_i^{(h)} )
+-
+(1-s)\ell_i^*(-\alpha_i^{(h-1)})
++\frac{\gamma}{2} s(1-s)
+ (u_i^{(h)}- \alpha_i^{(h-1)})^2\\
+ &\hspace{2cm}
+ - \frac{\lambda n}{2}
+    \norm{ \wv^{(h-1)} + \frac1{\lambda n }   s (u_i^{(h)}- \alpha_i^{(h-1)}) \x_i }^2
+\\
+&=
+\underbrace{-s ( \ell_i^*(- u_i^{(h)}) +  u_i^{(h)}   \x_i^T \wv^{(h-1)}  )
+}_{s \ell( \x_i^T \wv^{(h-1)} ) }
+%--------------
++
+\underbrace{(-
+ \ell_i^*(-\alpha_i^{(h-1)})
+ - \frac{\lambda n}{2}
+    \| \wv^{(h-1)} \|^2)}_B
+    %------------------
+\\&\quad
++
+\frac{s}{2}
+ \left(
+   \gamma(1-s)
+   - \frac{1}{ \lambda n }
+     s  \| \x_i\|^2
+ \right)
+  (u_i^{(h)}- \alpha_i^{(h-1)})^2
+      +
+     s (\ell_i^*(-\alpha_i^{(h-1)})+  \alpha_i^{(h-1)}  \x_i^T \wv^{(h-1)}.
+\end{align*}
+Therefore
+\begin{align}\label{eq:asfcfvgar3wggr}
+A-B
+&\geq
+  s
+  \Big[\ \ell(\x_i^T \wv^{(h-1)} )
++    \ell_i^*(-\alpha_i^{(h-1)})
++    \alpha_i^{(h-1)}  \x_i^T \wv^{(h-1)} \nonumber\\
+&\hspace{3cm}
++
+\frac{1}{2}
+ \left(
+   \gamma(1-s)
+   - \frac{1}{ \lambda n }
+   s
+     \|     \x_i\|^2
+ \right)
+  (u_i^{(h)}- \alpha_i^{(h-1)})^2
+      \ \Big].
+\end{align}
+
+
+
+Recall that our above definition of the local pair of primal and dual problems gives
+\begin{align*}
+ P_k ( \wv_k; \overline\wv)
+ -
+  D_k (  \av_{[k]}; \overline\wv)
+=
+  \frac1{n} \sum_{i \in \mathcal{I}_k}
+  \left(
+  \ell_i( (\overline\wv+  \wv_k)^T \x_i )
+  + \ell^*_i( -\alpha_i)
++\alpha_i (\overline\wv+  \wv_k)^T \x_i
+  \right).
+\end{align*}
+where  $\wv_k := A_{[k]}\av_{[k]}$.%$\wv_k =\frac1{\lambda n} \sum_{i \in \mathcal{I}_k} \x_i \alpha_i$.
+
+If we take the expectation of \eqref{eq:asfcfvgar3wggr}
+we obtain
+\begin{align*}
+\frac1s \E[A-B]
+&\geq
+\frac{n}{n_k}
+\underbrace{
+\frac1n
+ \sum_{i \in \mathcal{I}_k}
+  \left[ \ell(\x_i^T \wv^{(h-1)} )
++    \ell_i^*(-\alpha_i^{(h-1)})
++    \alpha_i^{(h-1)}  \x_i^T \wv^{(h-1)}
+\right]}_{ P_k (  w_k^{(h-1)}; \overline\wv)
+ -
+  D_k (  \av_{[k]}^{(h-1)}; \overline\wv)}
+\\&\quad -
+\frac{s}{2\lambda n}
+\underbrace{\frac{1}{n_k}
+ \sum_{i \in \mathcal{I}_k}
+ \left(
+  \|     \x_i\|^2 -
+   \frac{ \lambda n  \gamma(1-s)}{s}
+ \right)
+  (u_i^{(h)}- \alpha_i^{(h-1)})^2}_{G^{(h)}}.
+\end{align*}
+Therefore, we have obtained the claimed improvement bound
+\begin{align*}
+\frac ns \E[ D_k (  \av_{[k]}^{(h)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}^{(h-1)}; \overline\wv)]
+&\geq
+\frac{n}{n_k}
+(P_k (  \wv_k^{(h-1)}; \overline\wv)
+ -
+  D_k (  \av_{[k]}^{(h-1)}; \overline\wv))
+   -
+\frac{s}{2\lambda n}
+G^{(h)}.
+\end{align*}
+\end{proof}
+
+
+\begin{repproposition}{prop:smoothSDCApower}
+Assume the loss functions $\ell_i$ are $(1/\gamma)$-smooth. Then for using \localSDCA, Assumption \ref{asm:localImprobvment} holds with\vspace{-2mm}
+\begin{equation}%\label{eq:asfkpvfwaf}
+ \Theta = \left(  1-\frac{\lambda n \gamma}{1+\lambda n \gamma} \frac1{\tilde n} \right)^H.
+\end{equation}
+where $\tilde n := \max_k n_k$ is the size of the largest block of coordinates.\end{repproposition}
+
+\begin{lemma}[Local Convergence on the Subproblem]
+For any $\av_{[k]}^{(0)} \in \R^{n_k}$
+and $\overline\wv \in \R^d$
+let us define
+\begin{equation}\label{eq:asffewfwa}
+\av_{[k]}^{(*)}
+:= \argmax_{\av_{[k]} \in \R^{n_k}} D_k(\av_{[k]}; \overline\wv).
+\end{equation}
+If \localSDCA is used for $H$ iterations on block $k$, then
+\begin{equation}
+\label{eq:asfavfwavfwavg}
+\E\big[ D_k (  \av_{[k]}^{(*)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}^{(H)}; \overline\wv) \big]
+ \leq \left(1-\frac{s}{n_k}\right)^H
+ \left(
+ D_k (  \av_{[k]}^{(*)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}^{(0)}; \overline\wv)
+ \right).
+\end{equation}
+\end{lemma}
+\begin{proof}
+We will use Lemma \ref{lem:sdcaStep} with
+$s := \frac{\lambda n \gamma}{1+\lambda n \gamma} \in [0,1]$.
+Because $\|\x_i\|\leq 1$, we have $G^{(h)}\leq 0$. Therefore
+\begin{equation}
+\E\big[ D_k (  \av_{[k]}^{(h)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}^{(h-1)}; \overline\wv) \big]
+ \geq \frac{s}{n_k}
+\left(P_k (  \wv_k^{(h-1)}; \overline\wv)
+ -
+  D_k (  \av_{[k]}^{(h-1)}; \overline\wv) \right).
+\end{equation}
+Following the proof of Theorem 5 in \cite{ShalevShwartz:2013wl}
+we obtain the claimed bound.
+\end{proof}
+
+ 
+Now, to prove Proposition \ref{prop:smoothSDCApower} 
+it is enough to observe that
+for fixed $k$ 
+and any $\av = (\av_{[1]},\dots,\av_{[K]}) \in \R^n$,
+assuming we define $\overline\wv= \sum_{k'\ne k} A_{[k']}\av_{[k']}$, it holds that
+\begin{align*}
+\suboptlocal(\av)
+&\overset{\eqref{eq:suboptimality}}{=}
+\max_{\hat \av_{[k]} \in \R^{n_k}} 
+D((\av_{[1]},\dots,\hat \av_{[k]},\dots,\av_{[K]})) - D((\av_{[1]},\dots,\av_{[k]},\dots,\av_{[K]}))
+\\
+&=
+D((\av_{[1]},\dots,\av_{[k]}^{(*)},\dots,\av_{[K]})) - D((\av_{[1]},\dots,\av_{[k]},\dots,\av_{[K]}))
+\\
+&=
+ D_k (  \av_{[k]}^{(*)}; \overline\wv)
+ -
+ D_k (  \av_{[k]}; \overline\wv),
+\end{align*}
+ where $\av_{[k]}^{(*)}$
+ is defined by \eqref{eq:asffewfwa}.
+ 
+
+%
+\section{Proof of Lemma \ref{lem:sigmaBound} -- The Problem Complexity Parameter $\sigma_{\min}$}
+\begin{replemma}{lem:sigmaBound}
+If $K=1$ then $\sigma_{\min}=0$.
+For any $K\geq 1$, when assuming $\|\x_i\|\leq 1 \ \ \forall i$, we have 
+\[
+0 \le \sigma_{\min} \le \tilde n .
+\]
+Moreover, if datapoints between different workers are orthogonal, i.e. $(A^TA)_{i,j} = 0$ $\forall i,j$ such that $i$ and $j$ do not belong to the same part, then $\sigma_{\min}=0$.
+\end{replemma}
+\begin{proof}
+ If $K=1$ then $\av_{[K]}\equiv \av$ and hence 
+$\sigma_{\min}=0$.
+For a non-trivial case, when $K>1$ we have
+\begin{align*}
+\sigma_{\min}
+&\overset{\eqref{eq:sigma}}{=}
+\max_{\av \in \R^n}
+\lambda^2 n^2 %or alternatively could use the data matrix X instead of the scaled A matrix
+\frac{ \textstyle{\sum}_{k=1}^K  
+  \norm{ A_{[k]}   \av_{[k]} }^2  -
+  \norm{ A \av }^2 
+   }
+   {\norm{ \av }^2}
+\\
+&=
+\max_{\av \in \R^n}
+\frac{ \textstyle{\sum}_{k=1}^K  
+  \norm{ X_{[k]}   \av_{[k]} }^2  -
+  \norm{ X \av }^2 
+   }
+   {\norm{ \av }^2}
+\\
+&\leq   
+\max_{\av \in \R^n}
+\frac{ \textstyle{\sum}_{k=1}^K   
+  \norm{  X_{[k]}   \av_{[k]} }^2  
+   }
+   { \sum_{k=1}^K \norm{    \av_{[k]}   }^2   }
+\leq
+\max_{\av \in \R^n}
+\frac{ \textstyle{\sum}_{k=1}^K   
+    \tilde n \|\av_{[k]}\|^2
+   }
+   { \sum_{k=1}^K \norm{    \av_{[k]}   }^2   }  
+   \leq \tilde n, 
+\end{align*}
+where we have used the definition of the rescaled data matrix $A = \frac{1}{\lambda n} X$.
+The last inequality follows from the fact that since the datapoints have bounded 
+norm $\|\x_i\|\leq 1$, so that for all parts $k \in \{1,\dots,K\}$ we have
+\\ $
+\max_{\av_{[k]} \in \R^{n_k}} \frac{ \|X_{[k]} \av_{[k]}\|^2}{\|\av_{[k]}\|^2} 
+= \|X_{[k]}\|_{\text{op}}^2 \leq \|X_{[k]}\|_{\text{frob}}^2
+\leq n_k \leq \tilde n
+$, where $\tilde n := \max_k n_k$.
+
+The case when $A^TA$ is block-diagonal (with respect to the partition) is trivial.
+\end{proof}
+ 
+
+\end{document}
