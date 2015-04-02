@@ -1,9 +1,10 @@
 ./local-helper.sh distopt.driver \
---trainFile=data/small_train.dat \
---testFile=data/small_test.dat \
---numFeatures=9947 \
---numRounds=100 \
---localIterFrac=0.1 \
+--trainFile=/Users/simone/X_mean_10_mins.svm \
+--testFile=data/regr_test.dat \
+--numFeatures=4000 \
+--numRounds=50 \
+--localIterFrac=1.0 \
 --numSplits=4 \
---lambda=.001 \
---justCoCoA=false
+--lambda=0.01 \
+--justCoCoA=true \
+--beta=1.0

@@ -77,7 +77,7 @@ object SGD {
       // optionally calculate errors
       if (debugIter>0 && t % debugIter == 0) {
         println("Iteration: " + t)
-        println("primal objective: " + OptUtils.computePrimalObjective(data, w, lambda))
+        println("primal objective: " + OptUtils.computePrimalObjective(data, w, lambda, null))
         if (testData != null) { println("test error: " + OptUtils.computeClassificationError(testData, w)) }
       }
     }

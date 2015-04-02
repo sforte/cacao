@@ -1,5 +1,6 @@
 package distopt.utils
 
+import localsolvers.RealFunction
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import scala.util._
@@ -12,7 +13,8 @@ object OptUtils {
   def loadLIBSVMData(sc: SparkContext, filename: String, numSplits: Int, numFeats: Int): RDD[SparseClassificationPoint] = {
 
     // read in text file
-    val data = sc.textFile(filename,numSplits).coalesce(numSplits)  // note: coalesce can result in data being sent over the network. avoid this for large datasets
+
+    val data = sc.textFile(filename,numSplits).repartition(numSplits)
     val numEx = data.count()
 
     // find number of elements per partition
@@ -20,6 +22,7 @@ object OptUtils {
     val sizes = data.mapPartitionsWithSplit{ case(i,lines) =>
       Iterator(i -> lines.length)
     }.collect().sortBy(_._1)
+    sizes.foreach(println)
     val offsets = sizes.map(x => x._2).scanLeft(0)(_+_).toArray
 
     // parse input
@@ -33,14 +36,16 @@ object OptUtils {
 
           // parse label
           val parts = line.trim().split(' ')
-          var label = -1
-          if (parts(0).contains("+") || parts(0).toInt == 1)
-            label = 1
+
+          val label = parts(0).toDouble
+//          var label = -1
+//          if (parts(0).contains("+") || parts(0).toInt == 1)
+//            label = 1
 
           // parse features
           val featureArray = parts.slice(1,parts.length)
             .map(_.split(':') 
-            match { case Array(i,j) => (i.toInt-1,j.toDouble)}).toArray
+            match { case Array(i,j) => (i.toInt-1,j.toDouble)}).filter(_._2 != 0).toArray
           var features = new SparseVector(featureArray.map(x=>x._1), featureArray.map(x=>x._2))
 
           // create classification point
@@ -51,6 +56,11 @@ object OptUtils {
         }
       }
     }
+      .map(x => SparseClassificationPoint(x.index,x.label,
+      new SparseVector(
+        x.features.indices.filter(_ >= 2),
+        (x.features.indices zip x.features.values).filter(_._1 >= 2).map(_._2))
+      ))
   }
 
   def loadImageNetData(sc: SparkContext, filename: String, nsplits: Int): RDD[SparseClassificationPoint] = {
@@ -126,9 +136,9 @@ object OptUtils {
   }
 
   // can be used to compute train or test error
-  def computeAvgLoss(data: RDD[SparseClassificationPoint], w: Array[Double]) : Double = {
+  def computeAvgLoss(data: RDD[SparseClassificationPoint], w: Array[Double], losses: RDD[RealFunction]) : Double = {
     val n = data.count()
-    return data.map(hingeLoss(_,w)).reduce(_+_) / n
+    return (data zip losses).map(x => x._2(x._1.features.dot(w))).reduce(_+_) / n
   }
 
   /**
@@ -137,28 +147,31 @@ object OptUtils {
    * 
    * @param data
    * @param w
-   * @param n
    * @param lambda
    * @return
    */
-  def computePrimalObjective(data: RDD[SparseClassificationPoint], w: Array[Double], lambda: Double): Double = {
-    return (computeAvgLoss(data, w) + (normDense(w) * lambda * 0.5))
+  def computePrimalObjective(
+      data: RDD[SparseClassificationPoint], w: Array[Double], lambda: Double, loss: RDD[RealFunction]): Double = {
+    return (computeAvgLoss(data, w, loss) + (normDense(w) * lambda * 0.5))
   }
 
   /**
    * Compute the dual objective function value.
    * Caution:just use for debugging purposes. this is an expensive operation, taking one full pass through the data
    *
-   * @param data
    * @param w
-   * @param n
    * @param lambda
    * @return
    */
-  def computeDualObjective(data: RDD[SparseClassificationPoint], w: Array[Double], alpha : RDD[Array[Double]], lambda: Double): Double = {
-    val n = data.count()
-    val sumAlpha = alpha.map(x => x.sum).reduce(_ + _)
-    return (-lambda / 2 * OptUtils.normDense(w) + sumAlpha / n)
+  def computeDualObjective(
+    w: Array[Double], alpha : RDD[Array[Double]], lambda: Double, losses: RDD[RealFunction]): Double = {
+
+    val n = alpha.map(_.size).reduce(_ + _)
+
+    val asdf = (alpha zip losses.mapPartitions(x => Iterator(x.toArray)))
+      .map( x => (x._1 zip x._2).map{ case(x,loss) => loss(-x) }.sum ).reduce(_ + _) / n
+//println(asdf)
+    -lambda / 2 * OptUtils.normDense(w) - asdf
   }
   /**
    * Compute the duality gap value.
@@ -170,8 +183,10 @@ object OptUtils {
    * @param lambda
    * @return
    */
-  def computeDualityGap(data: RDD[SparseClassificationPoint], w: Array[Double], alpha: RDD[Array[Double]], lambda: Double): Double = {
-    return (computePrimalObjective(data, w, lambda) - computeDualObjective(data, w, alpha, lambda))
+  def computeDualityGap(data: RDD[SparseClassificationPoint], w: Array[Double],
+                          alpha: RDD[Array[Double]], lambda: Double,
+                          primalLoss: RDD[RealFunction], dualLoss: RDD[RealFunction]): Double = {
+    return (computePrimalObjective(data, w, lambda, primalLoss) - computeDualObjective(w, alpha, lambda, dualLoss))
   }
 
   def computeClassificationError(data: RDD[SparseClassificationPoint], w:Array[Double]) : Double = {
@@ -179,22 +194,34 @@ object OptUtils {
     return data.map(x => if((x.features).dot(w)*(x.label) > 0) 0.0 else 1.0).reduce(_ + _)/n
   }
 
-  def printSummaryStatsPrimalDual(algName: String, data: RDD[SparseClassificationPoint], w: Array[Double], alpha: RDD[Array[Double]], lambda: Double, testData: RDD[SparseClassificationPoint]) = {
+  def computeAbsoluteError(data: RDD[SparseClassificationPoint], w:Array[Double]) : Double = {
+    val n = data.count
+    println(n)
+    data.map(x => (x.features.dot(w),x.label)).take(100).foreach(x=>println(s"${x._1} ${x._2}"))
+    return data.map(x => math.abs(x.features.dot(w) - x.label)).reduce(_ + _)/n
+    //    println(w.mkString(" "))
+    //    return data.map(x => x.features.dot(w) - x.label).map(x => x*x).reduce(_ + _) / n
+  }
+
+  def printSummaryStatsPrimalDual(algName: String, data: RDD[SparseClassificationPoint], w: Array[Double], alpha: RDD[Array[Double]],
+        lambda: Double, testData: RDD[SparseClassificationPoint], primalLosses: RDD[RealFunction], dualLosses: RDD[RealFunction]) = {
     var outString = algName + " has finished running. Summary Stats: "
-    val objVal = computePrimalObjective(data, w, lambda)
+    val objVal = computePrimalObjective(data, w, lambda, primalLosses)
     outString = outString + "\n Total Objective Value: " + objVal
-    val dualityGap = computeDualityGap(data, w, alpha, lambda)
+    val dualityGap = computeDualityGap(data, w, alpha, lambda, primalLosses, dualLosses)
     outString = outString + "\n Duality Gap: " + dualityGap
     if(testData!=null){
-      val testErr = computeClassificationError(testData, w)
+//      val testErr = computeClassificationError(testData, w)
+      val testErr = computeAbsoluteError(testData, w)
       outString = outString + "\n Test Error: " + testErr
     }
     println(outString + "\n")
   }
 
-  def printSummaryStats(algName: String, data: RDD[SparseClassificationPoint], w: Array[Double], lambda: Double, testData: RDD[SparseClassificationPoint]) =  {
+  def printSummaryStats(algName: String, data: RDD[SparseClassificationPoint], w: Array[Double],
+      lambda: Double, testData: RDD[SparseClassificationPoint], losses: RDD[RealFunction]) =  {
     var outString = algName + " has finished running. Summary Stats: "
-    val objVal = computePrimalObjective(data, w, lambda)
+    val objVal = computePrimalObjective(data, w, lambda, losses)
     outString = outString + "\n Total Objective Value: " + objVal
     if(testData!=null){
       val testErr = computeClassificationError(testData, w)

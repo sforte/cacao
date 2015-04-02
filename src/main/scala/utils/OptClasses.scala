@@ -16,51 +16,50 @@ case class RegressionPoint(val label: Double, val features: Array[Double])
 case class SparseRegressionPoint(val label: Double, val features: SparseVector)
 
 // Sparse Vector Implementation
-class SparseVector(val indices: Array[Int], val values: Array[Double]) extends Serializable{
+class SparseVector(val indices: Array[Int], val values: Array[Double]) extends Serializable {
 
-  def apply(index: Int): Double = values.apply(indices.indexOf(index))
+  def *=(c: Double) = values.transform(_ * c)
 
-  def getOrElse(index: Int, default: Double): Double = {
-    if(this.indices.contains(index)){
-      return this.values(indices.indexOf(index))
-    } 
-    return default
+  def copy = new SparseVector(indices.clone, values.clone)
+
+  def dot(o: SparseVector) = {
+
+    var (prod,i,j) = (0.0,0,0)
+
+    while (i < indices.size && j < o.indices.size) {
+      if (indices(i) == o.indices(j)) prod += values(i) * o.values(j)
+      if (indices(i) <= o.indices(j)) i += 1
+      if (i < indices.size && indices(i) >= o.indices(j)) j += 1
+    }
+
+    prod
   }
 
-  // scale a sparse vector by a constant
-  def times(c: Double) : SparseVector = {
-    return new SparseVector(this.indices,this.values.map(x => x*c))
+  def dot(o: Array[Double]) = {
+
+    var prod = 0.0
+
+    for (i <- 0 until indices.size)
+      prod += values(i) * o(indices(i))
+
+    prod
   }
 
-  // add this sparse vector to another sparse vector, return sparse vector
-  def plus(sparse:SparseVector) : SparseVector = {
-    val combined = sparse.indices.zip(sparse.values) ++ this.indices.zip(this.values)
-    val sumArr = combined.groupBy( _._1).map { case (k,v) => k -> v.map(_._2).sum }.toArray
-    return new SparseVector(sumArr.map(x => x._1), sumArr.map(x => x._2))
-  }
+  def times(c: Double) = { val cp = copy; cp *= c; cp}
 
-  // add this sparse vector to a dense vector, return dense vector
-  def plus(dense:Array[Double]) : Array[Double] = {
+  def plus(dense: Array[Double]) : Array[Double] = {
     this.indices.zipWithIndex.foreach{ case(idx,i) => (dense(idx) = dense(idx)+this.values(i))}
     return dense
   }
-
-  // dot product of sparse vector (sortedmap) and dense vector
-  def dot(dense: Array[Double]) : Double = {
-    var total = 0.0
-    this.indices.zipWithIndex.foreach{ case(idx,i) => (total += this.values(i)*dense(idx)) }
-    return total
-  }
-
-  // dot product of two sparse vectors
-  def dot(sparse: SparseVector) : Double = {
-    var total = 0.0
-    this.indices.zipWithIndex.foreach{ case(idx,i) => (total += this.values(i)*sparse.getOrElse(idx,0.0))}
-    return total
-  }
 }
 
-class DoubleArray(arr: Array[Double]){
+class DoubleArray(arr: Array[Double]) {
+
+  def += (o: SparseVector) {
+    for (i <- 0 until o.indices.size)
+      arr(o.indices(i)) += o.values(i)
+  }
+
   def plus(plusArr: Array[Double]) : Array[Double] = {
     val retArr = (0 to plusArr.length-1).map( i => this.arr(i) + plusArr(i)).toArray
     return retArr

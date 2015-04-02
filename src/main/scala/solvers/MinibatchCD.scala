@@ -1,5 +1,6 @@
 package distopt.solvers
 
+import localsolvers.RealFunction
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import distopt.utils.Implicits._
@@ -60,9 +61,9 @@ object MinibatchCD {
 
       // optionally calculate errors
       if (debugIter>0 && t % debugIter == 0) {
-        println("Iteration: " + t)
-        println("primal objective: " + OptUtils.computePrimalObjective(data, w, lambda))
-        println("primal-dual gap: " + OptUtils.computeDualityGap(data, w, alpha, lambda))
+//        println("Iteration: " + t)
+//        println("primal objective: " + OptUtils.computePrimalObjective(data, w, lambda, primalLosses))
+//        println("primal-dual gap: " + OptUtils.computeDualityGap(data, w, alpha, lambda, primalLosses, dualLosses))
         if (testData != null) { println("test error: " + OptUtils.computeClassificationError(testData, w)) }
       }
 
@@ -80,7 +81,6 @@ object MinibatchCD {
    * Performs one round of mini-batch CD updates
    *
    * @param zipData
-   * @param winit
    * @param localIters
    * @param lambda
    * @param n

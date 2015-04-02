@@ -16,6 +16,7 @@ conf/spark-env.sh
 docs/_site
 docs/api
 target/
+src/ignore/*
 reports/
 .project
 .classpath
