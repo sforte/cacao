@@ -1,75 +1,162 @@
 package distopt.utils
 
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.linalg.{DenseVector, SparseVector, Vector => Vec}
 
-// Dense Classification Point
-case class ClassificationPoint(val label: Double, val features: Array[Double])
+import scala.collection.mutable.ArrayBuffer
 
-// Sparse Classifcation Point
-case class SparseClassificationPoint(val index: Int, val label: Double, val features: SparseVector)
+object VectorOps {
 
-// Dense Regression Point
-case class RegressionPoint(val label: Double, val features: Array[Double])
+  def dot(a: Vec, b: Vec): Double = {
+    (a,b) match {
+      case (a: SparseVector, b: SparseVector) => dot(a,b)
+      case (a: SparseVector, b: DenseVector) => dot(a,b)
+      case (a: DenseVector, b: SparseVector) => dot(b,a)
+      case (a: DenseVector, b: DenseVector) => dot(a,b)
+    }
+  }
 
-// Sparse Regression Point
-case class SparseRegressionPoint(val label: Double, val features: SparseVector)
-
-// Sparse Vector Implementation
-class SparseVector(val indices: Array[Int], val values: Array[Double]) extends Serializable {
-
-  def *=(c: Double) = values.transform(_ * c)
-
-  def copy = new SparseVector(indices.clone, values.clone)
-
-  def dot(o: SparseVector) = {
+  def dot(a: SparseVector, b: SparseVector) : Double = {
+    require(a.size == b.size)
 
     var (prod,i,j) = (0.0,0,0)
 
-    while (i < indices.size && j < o.indices.size) {
-      if (indices(i) == o.indices(j)) prod += values(i) * o.values(j)
-      if (indices(i) <= o.indices(j)) i += 1
-      if (i < indices.size && indices(i) >= o.indices(j)) j += 1
+    while (i < a.indices.size && j < b.indices.size) {
+      if (a.indices(i) == b.indices(j)) prod += a.values(i) * b.values(j)
+      if (a.indices(i) <= b.indices(j)) i += 1
+      if (i < a.indices.size && a.indices(i) >= b.indices(j)) j += 1
     }
 
     prod
   }
 
-  def dot(o: Array[Double]) = {
+  def dot(a: SparseVector, b: DenseVector) : Double = {
+    require(a.size == b.size)
 
     var prod = 0.0
 
-    for (i <- 0 until indices.size)
-      prod += values(i) * o(indices(i))
+    for (i <- 0 until a.indices.size)
+      prod += a.values(i) * b.values(a.indices(i))
 
     prod
   }
 
-  def times(c: Double) = { val cp = copy; cp *= c; cp}
+  def dot(a: DenseVector, b: DenseVector) : Double = {
+    require(a.size == b.size)
 
-  def plus(dense: Array[Double]) : Array[Double] = {
-    this.indices.zipWithIndex.foreach{ case(idx,i) => (dense(idx) = dense(idx)+this.values(i))}
-    return dense
-  }
-}
+    var prod = 0.0
 
-class DoubleArray(arr: Array[Double]) {
+    for (i <- 0 until a.size)
+      prod += a.values(i) * b.values(i)
 
-  def += (o: SparseVector) {
-    for (i <- 0 until o.indices.size)
-      arr(o.indices(i)) += o.values(i)
+    prod
   }
 
-  def plus(plusArr: Array[Double]) : Array[Double] = {
-    val retArr = (0 to plusArr.length-1).map( i => this.arr(i) + plusArr(i)).toArray
-    return retArr
+  def times(a: Vec, c: Double) : Vec = {
+    a match {
+      case (a: SparseVector) => times(a,c)
+      case (a: DenseVector) => times(a,c)
+    }
   }
-  def times(c: Double) : Array[Double] = {
-    val retArr = this.arr.map(x => x*c)
-    return retArr
-  }
-}
 
-object Implicits{
-  implicit def arraytoDoubleArray(arr: Array[Double]) = new DoubleArray(arr)
+  def times(a: SparseVector, c: Double) : SparseVector = {
+    val res = a.copy
+    res.values.transform(_ * c)
+    res
+  }
+
+  def times(a: DenseVector, c: Double) : DenseVector = {
+    val res = a.copy
+    res.values.transform(_ * c)
+    res
+  }
+
+  def plus(a: Vec, b: DenseVector) : DenseVector = {
+    a match {
+      case (a: SparseVector) => plus(a,b)
+      case (a: DenseVector) => plus(a,b)
+    }
+  }
+
+  def plus(a: DenseVector, b: Vec) : DenseVector = plus(b,a)
+
+  def plus(a: Vec, b: Vec) : Vec = {
+    (a,b) match {
+      case (a: SparseVector, b: SparseVector) => plus(a,b)
+      case (a: SparseVector, b: DenseVector) => plus(a,b)
+      case (a: DenseVector, b: SparseVector) => plus(b,a)
+      case (a: DenseVector, b: DenseVector) => plus(a,b)
+    }
+  }
+
+  def plus(a: SparseVector, b: SparseVector) : SparseVector = {
+
+    require(a.size == b.size)
+
+    val (indices,values) = (ArrayBuffer[Int](),ArrayBuffer[Double]())
+    var (i,j) = (0,0)
+
+    while (i < a.indices.size || j < b.indices.size) {
+      if (j == b.indices.size || (i < a.indices.size && a.indices(i) < b.indices(j))) {
+        indices += a.indices(i)
+        values += a.values(i)
+        i += 1
+      } else if (i == a.indices.size || a.indices(i) > b.indices(j)) {
+        indices += b.indices(j)
+        values += b.values(j)
+        j += 1
+      } else {
+        indices += a.indices(i)
+        values += a.values(i) + b.values(j)
+        i += 1
+        j += 1
+      }
+    }
+
+    new SparseVector(a.size, indices.toArray, values.toArray)
+  }
+
+  def plus(a: SparseVector, b: DenseVector) : DenseVector = {
+    require(a.size == b.size)
+
+    val res = b.copy
+
+    for (i <- 0 until a.indices.size)
+      res.values(a.indices(i)) += a.values(i)
+
+    res
+  }
+
+  def plus(a: DenseVector, b: DenseVector) : DenseVector = {
+    require(a.size == b.size)
+
+    val res = b.copy
+
+    for (i <- 0 until a.size)
+      res.values(i) += a.values(i)
+
+    res
+  }
+
+  def plusEqual(a: DenseVector, b: Vec, c: Double) : DenseVector = {
+    b match {
+      case (b: SparseVector) => plusEqual(a,b,c)
+      case (b: DenseVector) => plusEqual(a,b,c)
+    }
+  }
+
+  def plusEqual(a: DenseVector, b: DenseVector, c: Double) : DenseVector = {
+    require(a.size == b.size)
+
+    for (i <- 0 until b.size)
+      a.values(i) += b.values(i) * c
+    a
+  }
+
+  def plusEqual(a: DenseVector, b: SparseVector, c: Double) : DenseVector = {
+    require(a.size == b.size)
+
+    for (i <- 0 until b.indices.size)
+      a.values(b.indices(i)) += b.values(i) * c
+    a
+  }
 }

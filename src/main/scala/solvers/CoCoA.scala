@@ -1,67 +1,83 @@
 package distopt.solvers
 
-import localsolvers.{SingleCoordinateOptimizerTrait, RealFunction, LocalSolverTrait}
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-import distopt.utils.Implicits._
+import java.util.Calendar
+
+import distopt.utils.VectorOps._
 import distopt.utils._
+import localsolvers.LocalSolverTrait
+import models.PrimalDualModel
+import org.apache.spark.SparkContext
+import org.apache.spark.mllib.linalg.{DenseVector, Vector}
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.rdd.RDD
 
 object CoCoA {
-
   /**
    * CoCoA - Communication-efficient distributed dual Coordinate Ascent.
    * 
    * @param sc Spark context
-   * @param data RDD of all data examples
-   * @param wInit initial weight vector (has to be zero)
+   * @param localSolver Method used to solve subproblems on local partitions
    * @param numRounds number of outer iterations T in the paper
    * @param beta scaling parameter. beta=1 gives averaging, beta=K=data.partitions.size gives (aggressive) adding
-   * @param chkptIter checkpointing the resulting RDDs from time to time, to ensure persistence and shorter dependencies
-   * @param testData ...
-   * @param debugIter ...
-   * @param seed ...
    * @return
    */
-  def runCoCoA(
-    sc: SparkContext, 
-    data: RDD[(Array[SparseClassificationPoint], LocalSolverTrait)],
-    wInit: Array[Double], 
+  def runCoCoA (
+    sc: SparkContext,
+    data: RDD[LabeledPoint],
+    problem: PrimalDualModel,
+    localSolver: LocalSolverTrait,
     numRounds: Int,
-    beta: Double, 
-    chkptIter: Int,
-    n: Int,
-    testData: RDD[SparseClassificationPoint],
-    debugIter: Int,
-    lambda: Double,
-    seed: Int) : (Array[Double], RDD[Array[Double]]) = {
-    
+    beta: Double,
+    seed: Int) : (DenseVector, RDD[DenseVector]) = {
+
+    val n = data.count()
+    val primalLoss = problem.primalLoss
+    val dualLoss = problem.dualLoss
+    val lambda = problem.lambda
+    val alphaInit = data.map(pt => problem.initAlpha(pt.label))
+
     val parts = data.partitions.size
 
-    println("\nRunning CoCoA on "+n+" data examples, distributed over "+parts+" workers")
+    val zipData: RDD[(DenseVector, Array[LabeledPoint])] =
+      (alphaInit zip data).mapPartitions(x => Iterator(x.toArray), preservesPartitioning = true)
+      .map(x => (new DenseVector(x.map(_._1).toArray), x.map(_._2).toArray))
 
-    var w = wInit
+    zipData.mapPartitions(x => Iterator(x.next()._2.size)).foreach(println)
+
+    var alphaArr = zipData.map(_._1).cache()
+    val dataArr = zipData.map(_._2).cache()
+
     val scaling = beta / parts
 
-    var alpha = data.map(_._1.map(x => 0.0))
+    var w = new DenseVector(
+      (alphaInit zip data)
+        .map { case (a, LabeledPoint(_,x)) => times(x,a/(lambda*n)) }
+        .reduce(plus).toArray)
 
-    for(t <- 1 to numRounds){
+    println("\nRunning CoCoA on "+n+" data examples, distributed over "+parts+" workers")
+    println(Calendar.getInstance.getTime)
 
-      val zipData = (alpha zip data).map(x => (x._1,x._2._1,x._2._2))
+    for(t <- 1 to numRounds) {
 
-      val updates = zipData.mapPartitions(partitionUpdate(_,w,scaling,seed+t),preservesPartitioning=true).persist()
-      alpha = updates.map(kv => kv._2)
-      val primalUpdates = updates.map(kv => kv._1).reduce(_ plus _)
-      w = primalUpdates.times(scaling).plus(w)
+      val zipData = alphaArr zip dataArr
 
-      println("Iteration: " + t)
+      val updates = zipData.mapPartitions(
+        partitionUpdate(_,localSolver,w,scaling,seed+t),preservesPartitioning=true).persist()
 
-      if(t % chkptIter == 0){
-        data.checkpoint()
-        alpha.checkpoint()
-      }
+      alphaArr = updates.map(kv => kv._2)
+      val primalUpdates = updates.map(kv => kv._1).reduce(plus)
+      w = plus(times(primalUpdates,scaling),w)
+
+      println(s"Iteration: $t")
+      if (t % 10 == 0)
+      OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, problem, w, alphaArr)
     }
 
-    (w, alpha)
+    println(Calendar.getInstance.getTime)
+
+    OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, problem, w, alphaArr)
+
+    (w, alphaArr)
   }
 
   /**
@@ -74,20 +90,21 @@ object CoCoA {
    * @return
    */
   private def partitionUpdate(
-    zipData: Iterator[(Array[Double], Array[SparseClassificationPoint], LocalSolverTrait)],
-    wInit: Array[Double],
+    zipData: Iterator[(DenseVector, Array[LabeledPoint])],
+    localSolver: LocalSolverTrait,
+    wInit: Vector,
     scaling: Double,
-    seed: Int): Iterator[(Array[Double], Array[Double])] = {
+    seed: Int): Iterator[(DenseVector, DenseVector)] = {
 
     val zipPair = zipData.next()
     val localData = zipPair._2
     var alpha = zipPair._1
-    val localSolver = zipPair._3
-    val alphaOld = alpha.clone()
+    val alphaOld = alpha.copy
 
-    val (deltaAlpha, deltaW) = localSolver.optimize(localData, wInit, alpha, seed)
+    val (deltaAlpha, deltaW) = localSolver.optimize(localData, wInit.asInstanceOf[DenseVector], alpha, seed)
 
-    alpha = alphaOld.plus(deltaAlpha.times(scaling))
+    alpha = plus(alphaOld,times(deltaAlpha,scaling))
+
     Iterator((deltaW, alpha))
   }
 }
