@@ -10,6 +10,7 @@ object driver {
 
   def main(args: Array[String]) {
 
+//  parsing command-line options
     val options =  args.map { arg =>
       arg.dropWhile(_ == '-').split('=') match {
         case Array(opt, v) => opt -> v
@@ -37,19 +38,26 @@ object driver {
     println("beta          " + beta);            println("beta          " + beta)
     println("seed          " + seed);            println("sgdIterations " + sgdIterations)
 
+//  setting up Spark
     val conf = new SparkConf().setMaster(master)
       .setAppName("demoCoCoA")
       .setJars(SparkContext.jarOfObject(this).toSeq)
     val sc = new SparkContext(conf)
 
+//  reading the data from an LibSVM format file into an RDD
     val data = MLUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
     val n = data.count()
 
+//  logistic regression model
     val model = new LogisticRegressionModel(lambda)
 
+//  setting up the single coordinate optimizer
     val scOptimizer = new BrentMethodOptimizer(model.dualLoss, sgdIterations, lambda, n)
 
+//  number of iterations we run the
     val localIters = Math.max((localIterFrac * n / data.partitions.size).toInt,1)
+
+//  the local solver method to be used on every machine
     val localSolver = new SDCASolver(scOptimizer, localIters, lambda, n)
 
     CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)

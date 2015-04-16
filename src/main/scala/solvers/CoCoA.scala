@@ -16,39 +16,41 @@ object CoCoA {
    * CoCoA - Communication-efficient distributed dual Coordinate Ascent.
    * 
    * @param sc Spark context
+   * @param data Data points on which we wish to train the model
+   * @param model The model we are training (logistic,svm,ridge etc.)
    * @param localSolver Method used to solve subproblems on local partitions
-   * @param numRounds number of outer iterations T in the paper
+   * @param numRounds Number of outer iterations of CoCoA.
    * @param beta scaling parameter. beta=1 gives averaging, beta=K=data.partitions.size gives (aggressive) adding
-   * @return
+   * @return The optimal (or near optimal) w and alpha vectors
    */
   def runCoCoA (
     sc: SparkContext,
     data: RDD[LabeledPoint],
-    problem: PrimalDualModel,
+    model: PrimalDualModel,
     localSolver: LocalSolverTrait,
     numRounds: Int,
     beta: Double,
     seed: Int) : (DenseVector, RDD[DenseVector]) = {
 
     val n = data.count()
-    val primalLoss = problem.primalLoss
-    val dualLoss = problem.dualLoss
-    val lambda = problem.lambda
-    val alphaInit = data.map(pt => problem.initAlpha(pt.label))
+    val lambda = model.lambda
+
+    // Initial feasible value for the alphas
+    val alphaInit = data.map(pt => model.initAlpha(pt.label))
 
     val parts = data.partitions.size
 
+    // We group partitions data in an Array and we zip it with an array of alphas
     val zipData: RDD[(DenseVector, Array[LabeledPoint])] =
       (alphaInit zip data).mapPartitions(x => Iterator(x.toArray), preservesPartitioning = true)
       .map(x => (new DenseVector(x.map(_._1).toArray), x.map(_._2).toArray))
-
-    zipData.mapPartitions(x => Iterator(x.next()._2.size)).foreach(println)
 
     var alphaArr = zipData.map(_._1).cache()
     val dataArr = zipData.map(_._2).cache()
 
     val scaling = beta / parts
 
+    // computing the initial w vector, given the initial feasible alphas
     var w = new DenseVector(
       (alphaInit zip data)
         .map { case (a, LabeledPoint(_,x)) => times(x,a/(lambda*n)) }
@@ -69,13 +71,12 @@ object CoCoA {
       w = plus(times(primalUpdates,scaling),w)
 
       println(s"Iteration: $t")
-      if (t % 10 == 0)
-      OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, problem, w, alphaArr)
+      OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, model, w, alphaArr)
     }
 
     println(Calendar.getInstance.getTime)
 
-    OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, problem, w, alphaArr)
+    OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, model, w, alphaArr)
 
     (w, alphaArr)
   }
@@ -83,10 +84,10 @@ object CoCoA {
   /**
    * Performs one round of local updates using a given local dual algorithm, 
    * here locaSDCA. Will perform localIters many updates per worker.
-   * @param zipData ...
-   * @param wInit ...
+   * @param zipData Partition data zipped with corresponding alphas
+   * @param localSolver Method to be used locally to optimize on the partition
+   * @param wInit Current w vector
    * @param scaling this is the scaling factor beta/K in the paper
-   * @param seed ...
    * @return
    */
   private def partitionUpdate(

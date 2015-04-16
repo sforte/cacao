@@ -7,14 +7,19 @@ import org.apache.spark.mllib.linalg.DenseVector
 import org.apache.spark.mllib.regression.LabeledPoint
 
 /**
- * Created by simone on 18/03/15.
+ * A Single Dual Coordinate Ascent based local solver
+ * @param scOptimizer The method used to optimize on a single coordinate
+ * @param localIters Number of iterations we run the method locally
+ * @param lambda Lambda parameter of the model
+ * @param n Number of data points
  */
 class SDCASolver(scOptimizer: SingleCoordinateOptimizerTrait, localIters: Int, lambda: Double, n: Long)
   extends LocalSolverTrait {
+
   /**
    * @param localData the local data examples
-   * @param wOld ...
-   * @param alphaOld ...
+   * @param wOld the old value of w
+   * @param alphaOld the old value for the alpha in the partition
    * @param seed ...
    * @return deltaAlpha and deltaW, summarizing the performed local changes, see paper
    */
@@ -40,8 +45,8 @@ class SDCASolver(scOptimizer: SingleCoordinateOptimizerTrait, localIters: Int, l
       val x = pt.features
 
       val scDeltaAlpha = scOptimizer.optimize(pt, alpha(idx), w)
-      plusEqual(w,x,scDeltaAlpha/(lambda*n))
 
+      plusEqual(w,x,scDeltaAlpha/(lambda*n))
       alpha.values(idx) += scDeltaAlpha
     }
 

@@ -8,15 +8,24 @@ import org.apache.spark.rdd.RDD
 
 object OptUtils {
 
+  /*
+    Compute average loss for the loss function defined in the model given a w vector
+   */
   def computeAvgLoss(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector) : Double = {
     val n = data.map(_.size).reduce(_ + _)
     data.map(_.map(x => model.primalLoss(x.label, dot(x.features,w))).sum).reduce(_+_) / n
   }
 
+  /*
+    Compute primal objective for the loss function defined in the model and a L2 norm regularizer
+   */
   def computePrimalObjective(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector): Double = {
     computeAvgLoss(data, model, w) + (dot(w,w) * model.lambda * 0.5)
   }
 
+  /*
+    Compute dual objective value for the dual loss function defined in the model and a L2 norm regularizer
+   */
   def computeDualObjective(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector, alpha: RDD[DenseVector]) = {
 
     val n = data.map(_.size).reduce(_+_)
@@ -31,18 +40,30 @@ object OptUtils {
     lossTerm + regularizer
   }
 
+  /*
+    Different between primal objective and dual objective value
+   */
   def computeDualityGap(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: DenseVector, alpha: RDD[DenseVector]) = {
     computePrimalObjective(data, model, w) - computeDualObjective(data, model, w, alpha)
   }
 
+  /*
+    Computing average 0/1 loss
+   */
   def computeClassificationError(data: RDD[LabeledPoint], w: Vector) : Double = {
     data.map(x => if(dot(x.features,w)*x.label > 0) 0.0 else 1.0).reduce(_+_) / data.count
   }
 
+  /*
+    Computing average absolute error
+   */
   def computeAbsoluteError(data: RDD[LabeledPoint], w: Vector) : Double = {
     data.map(x => math.abs(dot(x.features,w) - x.label)).reduce(_+_) / data.count
   }
 
+  /*
+    Prints primal and dual objective values and the corresponding duality gap
+   */
   def printSummaryStatsPrimalDual(
     algName: String, data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector, alpha: RDD[DenseVector]) {
 
@@ -51,31 +72,20 @@ object OptUtils {
     val dualityGap = objVal - dualObjVal
 
     println(
-      s"$algName has finished running. Summary Stats: " +
       s"\n Objective Value: $objVal" +
       s"\n Dual Objective Value: $dualObjVal" +
       s"\n Duality Gap: $dualityGap"
     )
-
-//    if(testData!=null && false) {
-//      val testErr = computeClassificationError(testData, w)
-//      outString = outString + "\n Test Error: " + testErr
-//    }
   }
 
+  /*
+    Prints the primal objective value
+   */
   def printSummaryStats(algName: String, model: PrimalDualModel, data: RDD[Array[LabeledPoint]], w: Vector) =  {
 
     val objVal = computePrimalObjective(data, model, w)
 
-    println(
-      s"$algName has finished running. Summary Stats: " +
-        s"\n Objective Value: $objVal"
-    )
-
-//    if(testData!=null){
-//      val testErr = computeClassificationError(testData, w)
-//      outString = outString + "\n Test Error: " + testErr
-//    }
+    println(s"\n Objective Value: $objVal")
   }
   
 }

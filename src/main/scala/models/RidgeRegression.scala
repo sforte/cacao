@@ -5,6 +5,9 @@ import localsolvers.SingleCoordinateOptimizerTrait
 import org.apache.spark.mllib.linalg.DenseVector
 import org.apache.spark.mllib.regression.LabeledPoint
 
+/*
+  Ridge regression model
+ */
 case class RidgeRegressionModel(lambda: Double) extends PrimalDualModel {
 
   def primalLoss = LogisticLoss
@@ -14,6 +17,10 @@ case class RidgeRegressionModel(lambda: Double) extends PrimalDualModel {
   def initAlpha(y: Double) = 0.0
 }
 
+/*
+  An ad-hoc single coordinate optimizer for Ridge; the optimization is
+  solvable in closed form.
+ */
 class RidgeOptimizer(lambda: Double, n: Int) extends SingleCoordinateOptimizerTrait {
   def optimize(pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
 

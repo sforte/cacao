@@ -1,5 +1,8 @@
 package models
 
+/*
+  Logistic regression classification model
+ */
 case class LogisticRegressionModel(lambda: Double) extends PrimalDualModel {
 
   def primalLoss = LogisticLoss

@@ -5,6 +5,9 @@ import localsolvers.SingleCoordinateOptimizerTrait
 import org.apache.spark.mllib.linalg.DenseVector
 import org.apache.spark.mllib.regression.LabeledPoint
 
+/*
+  SVM Classification model
+ */
 case class SVMClassificationModel(lambda: Double) extends PrimalDualModel {
 
   def primalLoss = HingeLoss
@@ -14,6 +17,10 @@ case class SVMClassificationModel(lambda: Double) extends PrimalDualModel {
   def initAlpha(y: Double) = 0.5*y
 }
 
+/*
+  An ad-hoc single coordinate optimizer for SVM; the optimization is
+  solvable in closed form.
+ */
 class SVMOptimizer(lambda: Double, n: Int) extends SingleCoordinateOptimizerTrait {
   def optimize(pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
 

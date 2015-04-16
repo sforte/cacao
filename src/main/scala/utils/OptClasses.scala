@@ -4,6 +4,9 @@ import org.apache.spark.mllib.linalg.{DenseVector, SparseVector, Vector => Vec}
 
 import scala.collection.mutable.ArrayBuffer
 
+/*
+  Common optimized vector operations
+ */
 object VectorOps {
 
   def dot(a: Vec, b: Vec): Double = {
