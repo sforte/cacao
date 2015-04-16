@@ -1,0 +1,199 @@
+\documentclass[11pt, a4paper, reqno, twoside]{scrartcl}
+
+\usepackage[a4paper, hmargin={1in, 1in}, vmargin={1in,
+  1in},headsep=10mm,headheight=5mm,footskip=30pt]{geometry}
+ 
+\usepackage{graphicx, amsmath, amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{bm,color}
+\usepackage{verbatim}
+
+
+\usepackage[boxruled,commentsnumbered]{algorithm2e}
+
+\usepackage{fancyhdr}
+  \renewcommand{\baselinestretch}{0.97} %this factor controls the space between lines
+  \fancyhead[]{}
+  \renewcommand{\headrulewidth}{0pt}
+
+% the only way to get two column algorithms seems to be to use a hack on top of the algorithm2e package
+\usepackage{multicol}
+%\usepackage[ruled,commentsnumbered]{algorithm2e}
+
+\newenvironment{algo}{%
+  \renewenvironment{algocf}[1][h]{}{}% pass over the floating stuff
+  \algorithm
+}{%
+  \endalgorithm
+}
+
+\definecolor{darkgreen}{rgb}{0,.4,.2}
+\definecolor{darkblue}{rgb}{.1,.2,.6}
+\definecolor{brightblue}{rgb}{0,0.6,0.8}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=darkblue,
+  citecolor=darkgreen,
+  filecolor=darkblue,
+  urlcolor=darkblue
+}
+
+\addtokomafont{caption}{\small}
+\addtokomafont{captionlabel}{\sffamily\bfseries}
+
+\newtheoremstyle{style}
+ {\topsep}              % Space above
+ {\topsep}              % Space below
+ {\itshape}              % Body font: original {\normalfont}
+ {}                         % Indent amount (empty = no indent,%\parindent = paraindent)
+ {\sffamily\bfseries}  % Thm head font original
+ {.}	                     % Punctuation after thm head
+ { }                         % Space after thm head (\newline = linebreak)
+ {}                          % Thm head spec
+\theoremstyle{style}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Environments, Definitions, Commands %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}[definition]{Corollary}
+\newtheorem{observation}[definition]{Observation}
+\newtheorem{conjecture}[definition]{Conjecture}
+\newtheorem{remark}[definition]{Remark}
+\newtheorem{problem}{Problem}
+\newtheorem{claim}{Claim}
+\newtheorem{open}{Open Problem}
+\newtheorem*{example}{Example}
+
+% the * at the end of operator seems to have the effect that the command will be properly have its sub/superstripts vertically below/above it, like \sum for example, this only applies if you are in \displaystyle
+\DeclareMathOperator{\st}{\textrm{s.t.}}
+\DeclareMathOperator*{\conv}{conv}
+\DeclareMathOperator{\diam}{diam}
+\DeclareMathOperator*{\E}{\rm E}
+\DeclareMathOperator*{\argmin}{\arg\min}
+\DeclareMathOperator*{\argmax}{\arg\max}
+\DeclareMathOperator{\lmax}{\lambda_{\max}}
+\DeclareMathOperator{\lmin}{\lambda_{\min}}
+\DeclareMathOperator*{\supp}{supp}
+\DeclareMathOperator*{\diag}{diag}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\tr}{Tr}
+\DeclareMathOperator*{\rk}{Rk}
+\DeclareMathOperator*{\card}{card}
+\DeclareMathOperator*{\nnz}{nnz}
+\DeclareMathOperator*{\relint}{\mathop{relint}}
+
+%norms
+\providecommand{\abs}[1]{\left\lvert#1\right\rvert}
+\providecommand{\norm}[1]{\left\lVert#1\right\rVert}
+
+\newcommand{\ball}{\mathcal{B}}
+\newcommand{\sphere}{\mathcal{S}}
+
+\newcommand{\bigO}{O}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\Sym}{\mathbb{S}}
+
+\newcommand{\domain}{\mathcal{D}}
+\newcommand{\stepsize}{\gamma}
+\newcommand{\x}{\bm{x}}
+\newcommand{\y}{\bm{y}}
+\newcommand{\z}{\bm{z}}
+\newcommand{\s}{\bm{s}}
+\newcommand{\bv}{\bm{b}}
+\newcommand{\uv}{\bm{u}}
+\newcommand{\av}{\bm{v}}
+\newcommand{\vv}{\bm{v}}
+\newcommand{\wv}{\bm{w}}
+\newcommand{\xv}{\bm{x}}
+\newcommand{\row}{\text{row}}
+\newcommand{\col}{\text{col}}
+\newcommand{\lft}{\text{left}}
+\newcommand{\rgt}{\text{right}}
+%
+\newcommand{\signVec}{\mathbf{s}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\id}{\mathbf{I}} % big i for identity
+\newcommand{\ind}{\mathbf{1}} % indicator vectors
+\newcommand{\0}{\mathbf{0}} % the origin
+\newcommand{\unit}{\mathbf{e}} % unit basis vectors
+\newcommand{\one}{\mathbf{1}} % all one vector
+\newcommand{\zero}{\mathbf{0}}
+\newcommand\SetOf[2]{\left\{#1\vphantom{#2}\right.\left|\vphantom{#1}\,#2\right\}}
+\newcommand{\ignore}[1]{}%{\textbf{***begin ignore***}\\#1\textbf{***end ignore***}}
+
+
+\newcommand{\todo}[1]{\marginpar[\hspace*{4.5em}\textbf{TODO}\hspace*{-4.5em}]{\textbf{TODO}}\textbf{TODO:} #1}
+\newcommand{\note}[1]{\marginpar{#1}}
+
+
+
+
+
+\begin{document}
+\pagestyle{fancy}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{Some Writeup of Something}
+
+\author{\\ Author Name\\
+{\small ETH Zurich}\\
+{\small \href{mailto:author@ethz.ch}{author@ethz.ch}}}
+\date{}
+
+
+\maketitle
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Abstract.}
+Rewrite proof for SGD, clarifying the role of $R:= \max_i \|\x_i\|$.
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+\section{Introduction}
+
+We prove some results
+\begin{equation}\label{eq:someEquationName}
+    L_i := \ell(\langle \x_i, \wv \rangle, y_i).
+\end{equation}
+where \eqref{eq:someEquationName} is mainly a placeholder.
+
+\[
+(x_1,\dots,x_d)
+\]
+\[
+\left(x_1,\dots,x_d,\sqrt{1-\|x\|_2^2}\right)
+\]
+
+
+
+\section{Frank-Wolfe Algorithm}
+
+\begin{algo}[H]
+  \caption{Frank-Wolfe Algorithm}
+  \label{alg:FW}
+\SetAlgoNoLine\DontPrintSemicolon
+  Let $\x^{(0)} \in \domain$\;
+  \For{$t=0\dots T$}{
+  %
+  Compute $\s := \displaystyle\argmin_{\s\in \domain}\textstyle\left\langle \s, \nabla f(\x^{(t)}) \right\rangle$\!\!\!\vspace{-1mm}\;
+  Let $\stepsize := \frac2{t+2}$\;
+  Update $\x^{(t+1)}:= (1-\stepsize)\x^{(t)}+\stepsize\s$\;
+  }%FOR
+\end{algo}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+\bibliographystyle{alpha}
+\bibliography{bibliography}
+
+
+\end{document}
