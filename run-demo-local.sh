@@ -1,10 +1,11 @@
 ./local-helper.sh distopt.driver \
---trainFile=/Users/simone/X_mean_10_mins.svm \
+--trainFile=/Users/simone/Desktop/matthias.svm \
 --testFile=data/regr_test.dat \
 --numFeatures=4000 \
---numRounds=50 \
+--numRounds=100 \
 --localIterFrac=1.0 \
---numSplits=4 \
---lambda=0.01 \
+--numSplits=8 \
+--lambda=1.0 \
 --justCoCoA=true \
---beta=1.0
+--beta=1.0 \
+--sgdIterations=100

@@ -18,8 +18,10 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
   "org.apache.spark" % "spark-core_2.10" % "1.1.1",
   "org.apache.commons" % "commons-compress" % "1.7",
+  "org.apache.commons" % "commons-math3" % "3.4.1",
   "commons-io" % "commons-io" % "2.4",
-  "org.jblas" % "jblas" % "1.2.3"
+  "org.jblas" % "jblas" % "1.2.3",
+  "org.apache.spark"  %% "spark-mllib" % "1.1.0"
 )
 
 {
