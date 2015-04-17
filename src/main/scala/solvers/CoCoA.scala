@@ -23,11 +23,11 @@ object CoCoA {
    * @param beta scaling parameter. beta=1 gives averaging, beta=K=data.partitions.size gives (aggressive) adding
    * @return The optimal (or near optimal) w and alpha vectors
    */
-  def runCoCoA (
+  def runCoCoA [ModelType<:PrimalDualModel] (
     sc: SparkContext,
     data: RDD[LabeledPoint],
-    model: PrimalDualModel,
-    localSolver: LocalSolverTrait,
+    model: ModelType,
+    localSolver: LocalSolverTrait[ModelType],
     numRounds: Int,
     beta: Double,
     seed: Int) : (DenseVector, RDD[DenseVector]) = {
@@ -64,7 +64,7 @@ object CoCoA {
       val zipData = alphaArr zip dataArr
 
       val updates = zipData.mapPartitions(
-        partitionUpdate(_,localSolver,w,scaling,seed+t),preservesPartitioning=true).persist()
+        partitionUpdate(model,n,_,localSolver,w,scaling,seed+t),preservesPartitioning=true).persist()
 
       alphaArr = updates.map(kv => kv._2)
       val primalUpdates = updates.map(kv => kv._1).reduce(plus)
@@ -90,9 +90,11 @@ object CoCoA {
    * @param scaling this is the scaling factor beta/K in the paper
    * @return
    */
-  private def partitionUpdate(
+  private def partitionUpdate [ModelType<:PrimalDualModel] (
+    model: ModelType,
+    n: Long,
     zipData: Iterator[(DenseVector, Array[LabeledPoint])],
-    localSolver: LocalSolverTrait,
+    localSolver: LocalSolverTrait[ModelType],
     wInit: Vector,
     scaling: Double,
     seed: Int): Iterator[(DenseVector, DenseVector)] = {
@@ -102,7 +104,7 @@ object CoCoA {
     var alpha = zipPair._1
     val alphaOld = alpha.copy
 
-    val (deltaAlpha, deltaW) = localSolver.optimize(localData, wInit.asInstanceOf[DenseVector], alpha, seed)
+    val (deltaAlpha, deltaW) = localSolver.optimize(model, n, localData, wInit.asInstanceOf[DenseVector], alpha, seed)
 
     alpha = plus(alphaOld,times(deltaAlpha,scaling))
 

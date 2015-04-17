@@ -2,7 +2,7 @@ package distopt
 
 import distopt.solvers._
 import localsolvers._
-import models.LogisticRegressionModel
+import models.{RidgeRegressionModel, RidgeOptimizer, SVMOptimizer, LogisticRegressionModel}
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -52,13 +52,13 @@ object driver {
     val model = new LogisticRegressionModel(lambda)
 
 //  setting up the single coordinate optimizer
-    val scOptimizer = new BrentMethodOptimizer(model.dualLoss, sgdIterations, lambda, n)
+    val scOptimizer = new BrentMethodOptimizer(sgdIterations)
 
 //  number of iterations we run the
     val localIters = Math.max((localIterFrac * n / data.partitions.size).toInt,1)
 
 //  the local solver method to be used on every machine
-    val localSolver = new SDCASolver(scOptimizer, localIters, lambda, n)
+    val localSolver = new SDCASolver(scOptimizer, localIters)
 
     CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
 

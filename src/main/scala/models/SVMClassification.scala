@@ -8,7 +8,7 @@ import org.apache.spark.mllib.regression.LabeledPoint
 /*
   SVM Classification model
  */
-case class SVMClassificationModel(lambda: Double) extends PrimalDualModel {
+case class SVMClassificationModel(lambda: Double) extends PrimalDualModelWithFirstDerivative {
 
   def primalLoss = HingeLoss
 
@@ -21,8 +21,10 @@ case class SVMClassificationModel(lambda: Double) extends PrimalDualModel {
   An ad-hoc single coordinate optimizer for SVM; the optimization is
   solvable in closed form.
  */
-class SVMOptimizer(lambda: Double, n: Int) extends SingleCoordinateOptimizerTrait {
-  def optimize(pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+class SVMOptimizer extends SingleCoordinateOptimizerTrait[SVMClassificationModel] {
+  def optimize(model: SVMClassificationModel, n: Long, pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+
+    val lambda = model.lambda
 
     val x = pt.features
     val y = pt.label
@@ -45,8 +47,9 @@ object HingeLoss extends RealFunction {
   def domain(y: Double) = (Double.NegativeInfinity, Double.PositiveInfinity)
 }
 
-object HingeLossConjugate extends RealFunction {
+object HingeLossConjugate extends DifferentiableRealFunction {
   def apply(y: Double, a: Double) = y*a
+  def derivative = HingeLossConjugateDerivative
   def domain(y: Double) = if (y == 1) (-1,0) else (0,1)
 }
 

@@ -8,11 +8,11 @@ import org.apache.spark.mllib.regression.LabeledPoint
 /*
   Ridge regression model
  */
-case class RidgeRegressionModel(lambda: Double) extends PrimalDualModel {
+case class RidgeRegressionModel(lambda: Double) extends PrimalDualModelWithFirstDerivative {
 
-  def primalLoss = LogisticLoss
+  def primalLoss = RidgeLoss
 
-  def dualLoss = LogisticLossConjugate
+  def dualLoss = RidgeLossConjugate
 
   def initAlpha(y: Double) = 0.0
 }
@@ -21,8 +21,10 @@ case class RidgeRegressionModel(lambda: Double) extends PrimalDualModel {
   An ad-hoc single coordinate optimizer for Ridge; the optimization is
   solvable in closed form.
  */
-class RidgeOptimizer(lambda: Double, n: Int) extends SingleCoordinateOptimizerTrait {
-  def optimize(pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+class RidgeOptimizer extends SingleCoordinateOptimizerTrait[RidgeRegressionModel] {
+  def optimize(model: RidgeRegressionModel, n: Long, pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+
+    val lambda = model.lambda
 
     val x = pt.features
     val y = pt.label
@@ -36,8 +38,9 @@ object RidgeLoss extends RealFunction {
   def domain(y: Double) = (Double.NegativeInfinity, Double.PositiveInfinity)
 }
 
-object RidgeLossConjugate extends RealFunction {
+object RidgeLossConjugate extends DifferentiableRealFunction {
   def apply(y: Double, a: Double) = a*a/4 + a*y
+  def derivative = RidgeLossConjugateDerivative
   def domain(y: Double) = (Double.NegativeInfinity, Double.PositiveInfinity)
 }
 

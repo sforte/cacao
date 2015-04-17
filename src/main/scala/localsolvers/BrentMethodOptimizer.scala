@@ -1,7 +1,7 @@
 package localsolvers
 
 import distopt.utils.VectorOps._
-import models.RealFunction
+import models.{PrimalDualModel, RealFunction}
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
@@ -10,13 +10,9 @@ import org.apache.spark.mllib.regression.LabeledPoint
 
 /**
  * Derivative free method to optimize to do ascent on a single coordinate.
- * @param dualLoss Dual conjugate of the loss function we wish to optimize on
- * @param numIter Number of iterations we run the method
- * @param lambda Lambda parameter of the model
- * @param n Number of data points
  */
-class BrentMethodOptimizer(dualLoss: RealFunction, numIter: Int, lambda: Double, n: Long)
-  extends SingleCoordinateOptimizerTrait {
+class BrentMethodOptimizer [-ModelType<:PrimalDualModel] (numIter: Int)
+  extends SingleCoordinateOptimizerTrait[ModelType] {
 
   /**
    * @param pt Point of which we wish to do coordinate ascent
@@ -24,7 +20,11 @@ class BrentMethodOptimizer(dualLoss: RealFunction, numIter: Int, lambda: Double,
    * @param w Old value of w
    * @return Delta alpha
    */
-  override def optimize(pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+
+  override def optimize(model: ModelType, n: Long, pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+
+    val lambda = model.lambda
+    val dualLoss = model.dualLoss
 
     val x = pt.features
     val y = pt.label
