@@ -3,7 +3,7 @@ package localsolvers
 import java.security.SecureRandom
 
 import distopt.utils.VectorOps._
-import models.PrimalDualModel
+import models.DualModel
 import org.apache.spark.mllib.linalg.DenseVector
 import org.apache.spark.mllib.regression.LabeledPoint
 
@@ -12,23 +12,20 @@ import org.apache.spark.mllib.regression.LabeledPoint
  * @param scOptimizer The method used to optimize on a single coordinate
  * @param localIters Number of iterations we run the method locally
  */
-class SDCASolver [-ModelType<:PrimalDualModel] (scOptimizer: SingleCoordinateOptimizerTrait[ModelType], localIters: Int)
-  extends LocalSolverTrait[ModelType] {
+class SDCAOptimizer [-ModelType<:DualModel] (scOptimizer: SingleCoordinateOptimizer[ModelType], localIters: Int)
+  extends LocalOptimizer[ModelType] {
 
   /**
    * @param localData the local data examples
    * @param wOld the old value of w
    * @param alphaOld the old value for the alpha in the partition
-   * @param seed ...
    * @return deltaAlpha and deltaW, summarizing the performed local changes, see paper
    */
   override def optimize(
     model: ModelType,
-    n: Long,
     localData: Array[LabeledPoint],
     wOld: DenseVector,
-    alphaOld: DenseVector,
-    seed : Int = 0) : (DenseVector,DenseVector) = {
+    alphaOld: DenseVector) : (DenseVector,DenseVector) = {
 
     val lambda = model.lambda
 
@@ -37,7 +34,7 @@ class SDCASolver [-ModelType<:PrimalDualModel] (scOptimizer: SingleCoordinateOpt
 
     val nLocal = localData.length
     val r = new SecureRandom
-    r.setSeed(seed)
+    r.setSeed(0)
 
     // perform local udpates
     for (i <- 1 to localIters) {
@@ -47,9 +44,11 @@ class SDCASolver [-ModelType<:PrimalDualModel] (scOptimizer: SingleCoordinateOpt
       val pt = localData(idx)
       val x = pt.features
 
-      val scDeltaAlpha = scOptimizer.optimize(model, n, pt, alpha(idx), w)
+      val (scDeltaAlpha, scDeltaW) = scOptimizer.optimize(model, pt, alpha(idx), w)
 
-      plusEqual(w,x,scDeltaAlpha/(lambda*n))
+      plusEqual(w,scDeltaW,1.0)
+//      plusEqual(w, x, scDeltaAlpha/(lambda*model.n))
+
       alpha.values(idx) += scDeltaAlpha
     }
 

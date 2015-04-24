@@ -1,7 +1,7 @@
 package distopt.utils
 
 import distopt.utils.VectorOps._
-import models.PrimalDualModel
+import models.{DualModel,Model}
 import org.apache.spark.mllib.linalg.{DenseVector, Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
@@ -11,7 +11,7 @@ object OptUtils {
   /*
     Compute average loss for the loss function defined in the model given a w vector
    */
-  def computeAvgLoss(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector) : Double = {
+  def computeAvgLoss(data: RDD[Array[LabeledPoint]], model: Model, w: Vector) : Double = {
     val n = data.map(_.size).reduce(_ + _)
     data.map(_.map(x => model.primalLoss(x.label, dot(x.features,w))).sum).reduce(_+_) / n
   }
@@ -19,14 +19,14 @@ object OptUtils {
   /*
     Compute primal objective for the loss function defined in the model and a L2 norm regularizer
    */
-  def computePrimalObjective(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector): Double = {
+  def computePrimalObjective(data: RDD[Array[LabeledPoint]], model: Model, w: Vector): Double = {
     computeAvgLoss(data, model, w) + (dot(w,w) * model.lambda * 0.5)
   }
 
   /*
     Compute dual objective value for the dual loss function defined in the model and a L2 norm regularizer
    */
-  def computeDualObjective(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector, alpha: RDD[DenseVector]) = {
+  def computeDualObjective(data: RDD[Array[LabeledPoint]], model: DualModel, w: Vector, alpha: RDD[DenseVector]) = {
 
     val n = data.map(_.size).reduce(_+_)
 
@@ -43,7 +43,7 @@ object OptUtils {
   /*
     Different between primal objective and dual objective value
    */
-  def computeDualityGap(data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: DenseVector, alpha: RDD[DenseVector]) = {
+  def computeDualityGap(data: RDD[Array[LabeledPoint]], model: DualModel, w: DenseVector, alpha: RDD[DenseVector]) = {
     computePrimalObjective(data, model, w) - computeDualObjective(data, model, w, alpha)
   }
 
@@ -65,14 +65,14 @@ object OptUtils {
     Prints primal and dual objective values and the corresponding duality gap
    */
   def printSummaryStatsPrimalDual(
-    algName: String, data: RDD[Array[LabeledPoint]], model: PrimalDualModel, w: Vector, alpha: RDD[DenseVector]) {
+    algName: String, data: RDD[Array[LabeledPoint]], model: DualModel, w: Vector, alpha: RDD[DenseVector]) {
 
     val objVal = computePrimalObjective(data, model, w)
     val dualObjVal = computeDualObjective(data, model, w, alpha)
     val dualityGap = objVal - dualObjVal
 
     println(
-      s"\n Objective Value: $objVal" +
+      s" Objective Value: $objVal" +
       s"\n Dual Objective Value: $dualObjVal" +
       s"\n Duality Gap: $dualityGap"
     )
@@ -81,11 +81,11 @@ object OptUtils {
   /*
     Prints the primal objective value
    */
-  def printSummaryStats(algName: String, model: PrimalDualModel, data: RDD[Array[LabeledPoint]], w: Vector) =  {
+  def printSummaryStats(algName: String, model: Model, data: RDD[Array[LabeledPoint]], w: Vector) =  {
 
     val objVal = computePrimalObjective(data, model, w)
 
-    println(s"\n Objective Value: $objVal")
+    println(s" Objective Value: $objVal")
   }
   
 }

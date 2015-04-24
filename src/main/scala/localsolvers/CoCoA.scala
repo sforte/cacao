@@ -1,49 +1,30 @@
-package distopt.solvers
+package localsolvers
 
 import java.util.Calendar
-
+import distopt.utils.OptUtils
 import distopt.utils.VectorOps._
-import distopt.utils._
-import localsolvers.LocalOptimizer
 import models.DualModel
-import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.{DenseVector, Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
-object CoCoA {
-  /**
-   * CoCoA - Communication-efficient distributed dual Coordinate Ascent.
-   * 
-   * @param sc Spark context
-   * @param data Data points on which we wish to train the model
-   * @param model The model we are training (logistic,svm,ridge etc.)
-   * @param localSolver Method used to solve subproblems on local partitions
-   * @param numRounds Number of outer iterations of CoCoA.
-   * @param beta scaling parameter. beta=1 gives averaging, beta=K=data.partitions.size gives (aggressive) adding
-   * @return The optimal (or near optimal) w and alpha vectors
-   */
-  def runCoCoA [ModelType<:DualModel] (
-    sc: SparkContext,
-    data: RDD[LabeledPoint],
-    model: ModelType,
-    localSolver: LocalOptimizer[ModelType],
-    numRounds: Int,
-    beta: Double,
-    seed: Int) : (DenseVector, RDD[DenseVector]) = {
+class CoCoA[-ModelType<:DualModel] (localSolver: LocalOptimizer[ModelType], numRounds: Int, beta: Double)
+    extends PrimalDualSolver[ModelType, RDD[LabeledPoint], RDD[Double], Vector] {
+
+  override def optimize(model: ModelType, data: RDD[LabeledPoint], alphaInit: RDD[Double], w: Vector): (RDD[Double], Vector) = {
 
     val n = data.count()
     val lambda = model.lambda
 
     // Initial feasible value for the alphas
-    val alphaInit = data.map(pt => model.initAlpha(pt.label))
+//    val alphaInit = data.map(pt => model.initAlpha(pt.label))
 
     val parts = data.partitions.size
 
     // We group partitions data in an Array and we zip it with an array of alphas
     val zipData: RDD[(DenseVector, Array[LabeledPoint])] =
       (alphaInit zip data).mapPartitions(x => Iterator(x.toArray), preservesPartitioning = true)
-      .map(x => (new DenseVector(x.map(_._1).toArray), x.map(_._2).toArray))
+        .map(x => (new DenseVector(x.map(_._1).toArray), x.map(_._2).toArray))
 
     var alphaArr = zipData.map(_._1).cache()
     val dataArr = zipData.map(_._2).cache()
@@ -64,7 +45,7 @@ object CoCoA {
       val zipData = alphaArr zip dataArr
 
       val updates = zipData.mapPartitions(
-        partitionUpdate(model,n,_,localSolver,w,scaling,seed+t),preservesPartitioning=true).persist()
+        partitionUpdate(model,n,_,localSolver,w,scaling),preservesPartitioning=true).persist()
 
       alphaArr = updates.map(kv => kv._2)
       val primalUpdates = updates.map(kv => kv._1).reduce(plus)
@@ -78,26 +59,16 @@ object CoCoA {
 
     OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, model, w, alphaArr)
 
-    (w, alphaArr)
+    (null, w)
   }
 
-  /**
-   * Performs one round of local updates using a given local dual algorithm, 
-   * here locaSDCA. Will perform localIters many updates per worker.
-   * @param zipData Partition data zipped with corresponding alphas
-   * @param localSolver Method to be used locally to optimize on the partition
-   * @param wInit Current w vector
-   * @param scaling this is the scaling factor beta/K in the paper
-   * @return
-   */
   private def partitionUpdate [ModelType<:DualModel] (
     model: ModelType,
     n: Long,
     zipData: Iterator[(DenseVector, Array[LabeledPoint])],
     localSolver: LocalOptimizer[ModelType],
     wInit: Vector,
-    scaling: Double,
-    seed: Int): Iterator[(DenseVector, DenseVector)] = {
+    scaling: Double): Iterator[(DenseVector, DenseVector)] = {
 
     val zipPair = zipData.next()
     val localData = zipPair._2

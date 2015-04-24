@@ -2,7 +2,9 @@ package distopt
 
 import distopt.solvers._
 import localsolvers._
-import models.{RidgeRegressionModel, RidgeOptimizer, SVMOptimizer, LogisticRegressionModel}
+import models._
+import org.apache.spark.mllib.classification.SVMModel
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -35,8 +37,8 @@ object driver {
     println("numFeatures:  " + numFeatures);     println("numSplits:    " + numSplits)
     println("testfile:     " + testFile);        println("lambda:       " + lambda)
     println("numRounds:    " + numRounds);       println("localIterFrac:" + localIterFrac)
-    println("beta          " + beta);            println("beta          " + beta)
-    println("seed          " + seed);            println("sgdIterations " + sgdIterations)
+    println("beta          " + beta);            println("seed          " + seed);
+    println("sgdIterations " + sgdIterations)
 
 //  setting up Spark
     val conf = new SparkConf().setMaster(master)
@@ -49,18 +51,21 @@ object driver {
     val n = data.count()
 
 //  logistic regression model
-    val model = new LogisticRegressionModel(lambda)
+    val model = new LogisticRegressionModel(n,lambda)
 
 //  setting up the single coordinate optimizer
     val scOptimizer = new BrentMethodOptimizer(sgdIterations)
+//    val scOptimizer = new PrimalOptimizer(sgdIterations)
 
 //  number of iterations we run the
     val localIters = Math.max((localIterFrac * n / data.partitions.size).toInt,1)
 
 //  the local solver method to be used on every machine
-    val localSolver = new SDCASolver(scOptimizer, localIters)
+    val localSolver = new SDCAOptimizer(scOptimizer, localIters)
 
     CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
+
+//    CaCaO.runCaCaO(sc, data, Vectors.zeros(numFeatures), numRounds, beta, 0, n.toInt, null, 0, lambda, model.primalLoss, 100, 0)
 
     sc.stop()
    }

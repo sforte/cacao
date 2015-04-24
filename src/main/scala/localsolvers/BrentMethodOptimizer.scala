@@ -1,18 +1,18 @@
 package localsolvers
 
 import distopt.utils.VectorOps._
-import models.{PrimalDualModel, RealFunction}
+import models.{DualModel, RealFunction}
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
-import org.apache.spark.mllib.linalg.DenseVector
+import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 
 /**
  * Derivative free method to optimize to do ascent on a single coordinate.
  */
-class BrentMethodOptimizer [-ModelType<:PrimalDualModel] (numIter: Int)
-  extends SingleCoordinateOptimizerTrait[ModelType] {
+class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int)
+  extends SingleCoordinateOptimizer[ModelType] {
 
   /**
    * @param pt Point of which we wish to do coordinate ascent
@@ -21,13 +21,17 @@ class BrentMethodOptimizer [-ModelType<:PrimalDualModel] (numIter: Int)
    * @return Delta alpha
    */
 
-  override def optimize(model: ModelType, n: Long, pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+  override def optimize(model: ModelType, pt: LabeledPoint, alpha: Double, v: Vector) = {
 
+    val n = model.n
     val lambda = model.lambda
     val dualLoss = model.dualLoss
 
     val x = pt.features
     val y = pt.label
+
+//    val w = Vectors.zeros(x.size)
+    val w = v
 
     val (ww,xx,xw) = (dot(w,w),dot(x,x),dot(x,w))
 
@@ -46,6 +50,9 @@ class BrentMethodOptimizer [-ModelType<:PrimalDualModel] (numIter: Int)
     val domain = dualLoss.domain(-y)
     val alphaNew = brent.optimize(func, GoalType.MINIMIZE, domain._1, domain._2, alpha)
 
-    alphaNew - alpha
+    val deltaAlpha = alphaNew - alpha
+
+    (deltaAlpha, times(x, deltaAlpha/(lambda*n)))
+//    (deltaAlpha, null)
   }
 }

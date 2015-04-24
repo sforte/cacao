@@ -1,18 +1,20 @@
 package models
 
 import distopt.utils.VectorOps._
-import localsolvers.SingleCoordinateOptimizerTrait
-import org.apache.spark.mllib.linalg.DenseVector
+import localsolvers.SingleCoordinateOptimizer
+import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.regression.LabeledPoint
 
 /*
   SVM Classification model
  */
-case class SVMClassificationModel(lambda: Double) extends PrimalDualModelWithFirstDerivative {
+case class SVMClassificationModel(n: Long, lambda: Double) extends PrimalDualModelWithFirstDerivative with PrimalModel {
 
   def primalLoss = HingeLoss
 
   def dualLoss = HingeLossConjugate
+
+  def primalLossGradient = null
 
   def initAlpha(y: Double) = 0.5*y
 }
@@ -21,10 +23,11 @@ case class SVMClassificationModel(lambda: Double) extends PrimalDualModelWithFir
   An ad-hoc single coordinate optimizer for SVM; the optimization is
   solvable in closed form.
  */
-class SVMOptimizer extends SingleCoordinateOptimizerTrait[SVMClassificationModel] {
-  def optimize(model: SVMClassificationModel, n: Long, pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+class SVMOptimizer extends SingleCoordinateOptimizer[SVMClassificationModel] {
+  def optimize(model: SVMClassificationModel, pt: LabeledPoint, alpha: Double, w: Vector) = {
 
     val lambda = model.lambda
+    val n = model.n
 
     val x = pt.features
     val y = pt.label
@@ -38,7 +41,9 @@ class SVMOptimizer extends SingleCoordinateOptimizerTrait[SVMClassificationModel
     else
       alphaNew = math.min(math.max(alphaNew, -1), 0)
 
-    alphaNew - alpha
+    val deltaAlpha = alphaNew - alpha
+
+    (deltaAlpha, times(x, deltaAlpha/(lambda*n)))
   }
 }
 

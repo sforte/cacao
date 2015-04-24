@@ -3,13 +3,15 @@ package models
 /*
   Logistic regression classification model
  */
-case class LogisticRegressionModel(lambda: Double) extends PrimalDualModel {
+case class LogisticRegressionModel(n: Long, lambda: Double) extends PrimalDualModelWithSecondDerivative with PrimalModel {
 
   def primalLoss = LogisticLoss
 
   def dualLoss = LogisticLossConjugate
 
   def initAlpha(y: Double) = 0.5*y
+
+  def primalLossGradient = null
 }
 
 object LogisticLoss extends RealFunction {

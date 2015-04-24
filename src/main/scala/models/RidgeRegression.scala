@@ -1,35 +1,40 @@
 package models
 
 import distopt.utils.VectorOps._
-import localsolvers.SingleCoordinateOptimizerTrait
-import org.apache.spark.mllib.linalg.DenseVector
+import localsolvers.SingleCoordinateOptimizer
+import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.regression.LabeledPoint
 
 /*
   Ridge regression model
  */
-case class RidgeRegressionModel(lambda: Double) extends PrimalDualModelWithFirstDerivative {
+case class RidgeRegressionModel(n: Long, lambda: Double) extends PrimalDualModelWithFirstDerivative with PrimalModel {
 
   def primalLoss = RidgeLoss
 
   def dualLoss = RidgeLossConjugate
 
   def initAlpha(y: Double) = 0.0
+
+  def primalLossGradient: Gradient = null
 }
 
 /*
   An ad-hoc single coordinate optimizer for Ridge; the optimization is
   solvable in closed form.
  */
-class RidgeOptimizer extends SingleCoordinateOptimizerTrait[RidgeRegressionModel] {
-  def optimize(model: RidgeRegressionModel, n: Long, pt: LabeledPoint, alpha: Double, w: DenseVector): Double = {
+class RidgeOptimizer extends SingleCoordinateOptimizer[RidgeRegressionModel] {
+  def optimize(model: RidgeRegressionModel, pt: LabeledPoint, alpha: Double, w: Vector): (Double, Vector) = {
 
+    val n = model.n
     val lambda = model.lambda
 
     val x = pt.features
     val y = pt.label
 
-    (-dot(x,w) - alpha/2 + y) / (dot(x,x)/(lambda*n) + 1.0/2)
+    val deltaAlpha = (-dot(x,w) - alpha/2 + y) / (dot(x,x)/(lambda*n) + 1.0/2)
+
+    (deltaAlpha, times(x, deltaAlpha/(lambda*n)))
   }
 }
 

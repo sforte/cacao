@@ -5,7 +5,7 @@ import java.util.Calendar
 import distopt.utils
 import distopt.utils.VectorOps._
 import distopt.utils._
-import localsolvers.LocalSolverTrait
+import localsolvers.LocalOptimizer
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.analysis.DifferentiableUnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
@@ -37,7 +37,7 @@ object CaCaO {
    */
   def runCaCaO(
     sc: SparkContext, 
-    data: RDD[Array[LabeledPoint]],
+    dt: RDD[LabeledPoint],
     wInit: Vector,
     numRounds: Int,
     beta: Double, 
@@ -50,7 +50,9 @@ object CaCaO {
     sgdIterations: Int,
     seed: Int) : Vector = {
     
-    val parts = data.partitions.size
+    val parts = dt.partitions.size
+
+    val data = dt.mapPartitions(x => Iterator(x.toArray), preservesPartitioning = true)
 
     println("\nRunning CaCaO on "+n+" data examples, distributed over "+parts+" workers")
 
@@ -72,8 +74,10 @@ object CaCaO {
       wLocal = (wLocal zip updates).map{ case (wK,delta) => plus(wK, times(delta,scaling)) }
 
       println(s"Iteration: $t")
-      println(w(0))
-//      OptUtils.printSummaryStats("CaCaO",data,w,lambda,testData,primalLoss)
+      val (pl,nn,la) = (primalLoss,n,lambda)
+      OptUtils.printSummaryStats("CaCaO",
+        new models.Model with Serializable { def primalLoss = pl; def n = nn; def lambda = la;}
+      , data, w)
     }
 
     w
@@ -255,14 +259,9 @@ object CaCaO {
 //      plusEqual(wK.asInstanceOf[DenseVector], lossGrad, 1/(1 - eta*lambda)/s)
 //      s *= (1 - eta*lambda)
 
-//      wK = plus(wK, times(plus(times(logLossGradient(pt, wK, wBar,1.0),nK.toDouble/n),times(wK,lambda)), -eta))
-
-      wK = plus(wK, times(plus(times(logLossGradient(pt, wK, wBar,1.0),nK.toDouble/n),times(
-//        2wK
-          plus(times(wK, 2*math.log(1 + dot(wK,wK))), times(wK, 2))
-        ,0.5*lambda)), -eta))
+      wK = plus(wK, times(plus(times(logLossGradient(pt, wK, wBar,1.0),nK.toDouble/n),times(wK,lambda)), -eta))
     }
-    println(wK(0))
+
     times(wK,s)
   }
 }

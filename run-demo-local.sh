@@ -1,7 +1,7 @@
 ./local-helper.sh distopt.driver \
---trainFile=/Users/simone/Desktop/matthias.svm \
+--trainFile=data/small_train.dat \
 --testFile=data/regr_test.dat \
---numFeatures=4000 \
+--numFeatures=10000 \
 --numRounds=100 \
 --localIterFrac=1.0 \
 --numSplits=8 \
