@@ -2,6 +2,7 @@ package distopt.utils
 
 import org.apache.spark.mllib.linalg.{DenseVector, SparseVector, Vector => Vec}
 
+import breeze.linalg.{SparseVector => SV}
 import scala.collection.mutable.ArrayBuffer
 
 /*
@@ -118,6 +119,8 @@ object VectorOps {
     new SparseVector(a.size, indices.toArray, values.toArray)
   }
 
+  def minus(a: Vec, b: Vec) = plus(a, times(b,-1))
+
   def plus(a: SparseVector, b: DenseVector) : DenseVector = {
     require(a.size == b.size)
 
@@ -161,5 +164,11 @@ object VectorOps {
     for (i <- 0 until b.indices.size)
       a.values(b.indices(i)) += b.values(i) * c
     a
+  }
+
+  def l2norm(w: Vec) = dot(w,w)
+  def l1norm(w: Vec) = w match {
+    case (w: SparseVector) => w.values.map(math.abs).sum
+    case (w: DenseVector) => w.values.map(math.abs).sum
   }
 }

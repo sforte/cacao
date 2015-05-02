@@ -17,44 +17,46 @@ class SDCAOptimizer [-ModelType<:DualModel] (scOptimizer: SingleCoordinateOptimi
 
   /**
    * @param localData the local data examples
-   * @param wOld the old value of w
+   * @param vOld the old value of v
    * @param alphaOld the old value for the alpha in the partition
    * @return deltaAlpha and deltaW, summarizing the performed local changes, see paper
    */
   override def optimize(
     model: ModelType,
     localData: Array[LabeledPoint],
-    wOld: DenseVector,
-    alphaOld: DenseVector) : (DenseVector,DenseVector) = {
+    vOld: DenseVector,
+    alphaOld: DenseVector,
+    epsilon: Double = 0.0) : (DenseVector,DenseVector) = {
 
-    val lambda = model.lambda
+    val lambda = model.regularizer.lambda
 
     val alpha = alphaOld.copy
-    val w = wOld.copy
+    val v = vOld.copy
 
     val nLocal = localData.length
     val r = new SecureRandom
     r.setSeed(0)
 
     // perform local udpates
-    for (i <- 1 to localIters) {
+    for (i <- util.Random.shuffle(1 to nLocal)) {
       // randomly select a local example
-      val idx = r.nextInt(nLocal)
+//      val idx = r.nextInt(nLocal)
+      val idx = i-1
 
       val pt = localData(idx)
       val x = pt.features
 
-      val (scDeltaAlpha, scDeltaW) = scOptimizer.optimize(model, pt, alpha(idx), w)
+      val (scDeltaAlpha, scDeltaV) = scOptimizer.optimize(model, pt, alpha(idx), v)
 
-      plusEqual(w,scDeltaW,1.0)
+      plusEqual(v,scDeltaV,1.0)
 //      plusEqual(w, x, scDeltaAlpha/(lambda*model.n))
 
       alpha.values(idx) += scDeltaAlpha
     }
 
     val deltaAlpha = plus(alpha,times(alphaOld,-1.0))
-    val deltaW = plus(w,times(wOld,-1.0))
+    val deltaV = plus(v,times(vOld,-1.0))
 
-    (deltaAlpha, deltaW)
+    (deltaAlpha, deltaV)
   }
 }

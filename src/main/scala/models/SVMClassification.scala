@@ -8,15 +8,12 @@ import org.apache.spark.mllib.regression.LabeledPoint
 /*
   SVM Classification model
  */
-case class SVMClassificationModel(n: Long, lambda: Double) extends PrimalDualModelWithFirstDerivative with PrimalModel {
+case class SVMClassificationModel(n: Long, var regularizer: Regularizer)
+  extends DualModelWithFirstDerivative {
 
   def primalLoss = HingeLoss
 
   def dualLoss = HingeLossConjugate
-
-  def primalLossGradient = null
-
-  def initAlpha(y: Double) = 0.5*y
 }
 
 /*
@@ -24,10 +21,11 @@ case class SVMClassificationModel(n: Long, lambda: Double) extends PrimalDualMod
   solvable in closed form.
  */
 class SVMOptimizer extends SingleCoordinateOptimizer[SVMClassificationModel] {
-  def optimize(model: SVMClassificationModel, pt: LabeledPoint, alpha: Double, w: Vector) = {
+  def optimize(model: SVMClassificationModel, pt: LabeledPoint, alpha: Double, v: Vector, epsilon: Double = 0.0) = {
 
-    val lambda = model.lambda
+    val lambda = model.regularizer.lambda
     val n = model.n
+    val w = model.regularizer.dualGradient(v)
 
     val x = pt.features
     val y = pt.label
@@ -47,18 +45,18 @@ class SVMOptimizer extends SingleCoordinateOptimizer[SVMClassificationModel] {
   }
 }
 
-object HingeLoss extends RealFunction {
+object HingeLoss extends Loss {
   def apply(y: Double, x: Double) = math.max(0, 1 - x*y)
   def domain(y: Double) = (Double.NegativeInfinity, Double.PositiveInfinity)
 }
 
-object HingeLossConjugate extends DifferentiableRealFunction {
+object HingeLossConjugate extends DifferentiableLoss {
   def apply(y: Double, a: Double) = y*a
   def derivative = HingeLossConjugateDerivative
   def domain(y: Double) = if (y == 1) (-1,0) else (0,1)
 }
 
-object HingeLossConjugateDerivative extends RealFunction {
+object HingeLossConjugateDerivative extends Loss {
   def apply(y: Double, a: Double): Double = -y
   def domain(y: Double) = if (y == 1) (-1,0) else (0,1)
 }

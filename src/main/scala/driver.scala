@@ -1,10 +1,17 @@
 package distopt
 
+import _root_.solvers.{AccCoCoA, MllibLogisticWithL1}
 import distopt.solvers._
+import distopt.utils.OptUtils
+import distopt.utils.VectorOps._
 import localsolvers._
 import models._
-import org.apache.spark.mllib.classification.SVMModel
+import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionWithSGD, SVMModel}
+import org.apache.spark.mllib.feature.Normalizer
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.mllib.optimization.L1Updater
+import org.apache.spark.mllib.regression.{LabeledPoint, LassoModel, LassoWithSGD}
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -12,8 +19,8 @@ object driver {
 
   def main(args: Array[String]) {
 
-//  parsing command-line options
-    val options =  args.map { arg =>
+    //  parsing command-line options
+    val options = args.map { arg =>
       arg.dropWhile(_ == '-').split('=') match {
         case Array(opt, v) => opt -> v
         case Array(opt) => opt -> "true"
@@ -24,49 +31,55 @@ object driver {
     val master = options.getOrElse("master", "local[4]")
     val trainFile = options.getOrElse("trainFile", "")
     val numFeatures = options.getOrElse("numFeatures", "0").toInt
-    val numSplits = options.getOrElse("numSplits","1").toInt
+    val numSplits = options.getOrElse("numSplits", "1").toInt
     val testFile = options.getOrElse("testFile", "")
     val lambda = options.getOrElse("lambda", "0.01").toDouble
     val numRounds = options.getOrElse("numRounds", "200").toInt
-    val localIterFrac = options.getOrElse("localIterFrac","1.0").toDouble
-    val beta = options.getOrElse("beta","1.0").toDouble
-    val sgdIterations = options.getOrElse("sgdIterations","100").toInt
-    val seed = options.getOrElse("seed","0").toInt
+    val localIterFrac = options.getOrElse("localIterFrac", "1.0").toDouble
+    val beta = options.getOrElse("beta", "1.0").toDouble
+    val sgdIterations = options.getOrElse("sgdIterations", "100").toInt
+    val seed = options.getOrElse("seed", "0").toInt
 
-    println("master:       " + master);          println("trainFile:    " + trainFile)
-    println("numFeatures:  " + numFeatures);     println("numSplits:    " + numSplits)
-    println("testfile:     " + testFile);        println("lambda:       " + lambda)
-    println("numRounds:    " + numRounds);       println("localIterFrac:" + localIterFrac)
-    println("beta          " + beta);            println("seed          " + seed);
+    println("master:       " + master)
+    println("trainFile:    " + trainFile)
+    println("numFeatures:  " + numFeatures)
+    println("numSplits:    " + numSplits)
+    println("testfile:     " + testFile)
+    println("lambda:       " + lambda)
+    println("numRounds:    " + numRounds)
+    println("localIterFrac:" + localIterFrac)
+    println("beta          " + beta)
+    println("seed          " + seed)
     println("sgdIterations " + sgdIterations)
 
-//  setting up Spark
+    //  setting up Spark
     val conf = new SparkConf().setMaster(master)
       .setAppName("demoCoCoA")
       .setJars(SparkContext.jarOfObject(this).toSeq)
     val sc = new SparkContext(conf)
 
-//  reading the data from an LibSVM format file into an RDD
     val data = MLUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
     val n = data.count()
 
-//  logistic regression model
-    val model = new LogisticRegressionModel(n,lambda)
+//    val model = new LogisticRegressionModel(n, new L2Regularizer(lambda))
+    val model = new LogisticRegressionModel(n, new L1Regularizer(lambda, 0.1))
+//    val model = new SVMClassificationModel(n, new L2Regularizer(lambda))
+//    val model = new SVMClassificationModel(n, new L1Regularizer(lambda, epsilon = 0.0001))
+//    val model = new RidgeRegressionModel(n, new L2Regularizer(lambda))
+//    val model = new RidgeRegressionModel(n, new L1Regularizer(lambda, epsilon = 0.0001))
 
-//  setting up the single coordinate optimizer
-    val scOptimizer = new BrentMethodOptimizer(sgdIterations)
-//    val scOptimizer = new PrimalOptimizer(sgdIterations)
-
-//  number of iterations we run the
+//    val scOptimizer = new SVMOptimizer
+    val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
+//    val scOptimizer = new RidgeOptimizer
+//    val scOptimizer = new PrimalOptimizer(sgdIterations*10)
     val localIters = Math.max((localIterFrac * n / data.partitions.size).toInt,1)
-
-//  the local solver method to be used on every machine
     val localSolver = new SDCAOptimizer(scOptimizer, localIters)
 
-    CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
+//    CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
+    AccCoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
 
-//    CaCaO.runCaCaO(sc, data, Vectors.zeros(numFeatures), numRounds, beta, 0, n.toInt, null, 0, lambda, model.primalLoss, 100, 0)
-
+    MllibLogisticWithL1.run(data, lambda, model, 100000)
+//    0.39316973670152233
     sc.stop()
    }
 }

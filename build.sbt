@@ -21,7 +21,8 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-math3" % "3.4.1",
   "commons-io" % "commons-io" % "2.4",
   "org.jblas" % "jblas" % "1.2.3",
-  "org.apache.spark"  %% "spark-mllib" % "1.1.0"
+  "org.apache.spark"  %% "spark-mllib" % "1.1.0",
+  "com.github.fommil.netlib" % "all" % "1.1.2" pomOnly()
 )
 
 {

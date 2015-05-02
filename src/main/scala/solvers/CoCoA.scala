@@ -2,19 +2,20 @@ package distopt.solvers
 
 import java.util.Calendar
 
+import distopt.utils.OptUtils._
 import distopt.utils.VectorOps._
 import distopt.utils._
-import localsolvers.LocalOptimizer
-import models.DualModel
+import localsolvers._
+import models._
 import org.apache.spark.SparkContext
-import org.apache.spark.mllib.linalg.{DenseVector, Vector}
+import org.apache.spark.mllib.linalg.{Vectors, SparseVector, DenseVector, Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
 object CoCoA {
   /**
    * CoCoA - Communication-efficient distributed dual Coordinate Ascent.
-   * 
+   *
    * @param sc Spark context
    * @param data Data points on which we wish to train the model
    * @param model The model we are training (logistic,svm,ridge etc.)
@@ -25,60 +26,92 @@ object CoCoA {
    */
   def runCoCoA [ModelType<:DualModel] (
     sc: SparkContext,
-    data: RDD[LabeledPoint],
+    data: RDD[Array[LabeledPoint]],
+    alpha: RDD[DenseVector],
     model: ModelType,
     localSolver: LocalOptimizer[ModelType],
     numRounds: Int,
     beta: Double,
-    seed: Int) : (DenseVector, RDD[DenseVector]) = {
+    seed: Int,
+    epsilon: Double = 0.0) : (Vector, RDD[DenseVector]) = {
 
-    val n = data.count()
-    val lambda = model.lambda
+    val parts = data.count()
+    val lambda = model.regularizer.lambda
 
-    // Initial feasible value for the alphas
-    val alphaInit = data.map(pt => model.initAlpha(pt.label))
+    val n = model.n
+    val d = data.first()(0).features.size
 
-    val parts = data.partitions.size
-
-    // We group partitions data in an Array and we zip it with an array of alphas
-    val zipData: RDD[(DenseVector, Array[LabeledPoint])] =
-      (alphaInit zip data).mapPartitions(x => Iterator(x.toArray), preservesPartitioning = true)
-      .map(x => (new DenseVector(x.map(_._1).toArray), x.map(_._2).toArray))
-
+    val zipData = alpha zip data
     var alphaArr = zipData.map(_._1).cache()
     val dataArr = zipData.map(_._2).cache()
 
     val scaling = beta / parts
 
-    // computing the initial w vector, given the initial feasible alphas
-    var w = new DenseVector(
-      (alphaInit zip data)
-        .map { case (a, LabeledPoint(_,x)) => times(x,a/(lambda*n)) }
-        .reduce(plus).toArray)
+    var v = plus(Vectors.zeros(d), (dataArr zip alphaArr).flatMap(p=> (p._1 zip p._2.values))
+      .map { case(LabeledPoint(y,x), a) => times(x,a/(lambda*n)) }
+        .reduce(plus))
 
     println("\nRunning CoCoA on "+n+" data examples, distributed over "+parts+" workers")
     println(Calendar.getInstance.getTime)
 
-    for(t <- 1 to numRounds) {
+    var t = 1
+    var gap = computePrimalObjective(data, model, model.regularizer.dualGradient(v))
+              - computeDualObjective(data, model, v, alphaArr)
+
+    while (t <= numRounds && gap > epsilon) {
 
       val zipData = alphaArr zip dataArr
 
       val updates = zipData.mapPartitions(
-        partitionUpdate(model,n,_,localSolver,w,scaling,seed+t),preservesPartitioning=true).persist()
+        partitionUpdate(model,_,localSolver,v,scaling,seed+t),preservesPartitioning=true).persist()
 
       alphaArr = updates.map(kv => kv._2)
       val primalUpdates = updates.map(kv => kv._1).reduce(plus)
-      w = plus(times(primalUpdates,scaling),w)
+      v = plus(times(primalUpdates,scaling),v)
 
       println(s"Iteration: $t")
-      OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, model, w, alphaArr)
+      gap = printSummaryStatsPrimalDual("CoCoA", dataArr, model, v, alphaArr)
+
+      val objVal = computePrimalObjective(dataArr, model, model.regularizer.dualGradient(v))
+      val dualObjVal = computeDualObjective(dataArr, model, v, alphaArr)
+      gap = objVal - dualObjVal
+
+//      gap = computePrimalObjective(dataArr, model, model.regularizer.dualGradient(v))
+//            - computeDualObjective(dataArr, model, v, alphaArr)
+
+      println(gap, epsilon)
+      t += 1
     }
 
     println(Calendar.getInstance.getTime)
 
-    OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, model, w, alphaArr)
+//    OptUtils.printSummaryStatsPrimalDual("CoCoA", dataArr, model, v, alphaArr)
 
-    (w, alphaArr)
+    (v, alphaArr)
+  }
+
+  def runCoCoA [ModelType<:DualModel] (
+    sc: SparkContext,
+    data: RDD[LabeledPoint],
+    model: ModelType,
+    localSolver: LocalOptimizer[ModelType],
+    numRounds: Int,
+    beta: Double,
+    seed: Int,
+    epsilon: Double = 0.0) : (Vector, RDD[Double]) = {
+
+    val alpha = data.map(pt => 0.0)
+    val v = Vectors.zeros(data.first().features.size)
+
+    val lambda = model.regularizer.lambda
+    val n = model.n
+
+    val partData = data.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true)
+    val partAlphas = alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray)), preservesPartitioning = true)
+
+    val (vNew,alphaNew) = runCoCoA(sc, partData, partAlphas, model, localSolver, numRounds, beta, seed, epsilon)
+
+    (vNew, alphaNew.flatMap(_.values))
   }
 
   /**
@@ -86,16 +119,15 @@ object CoCoA {
    * here locaSDCA. Will perform localIters many updates per worker.
    * @param zipData Partition data zipped with corresponding alphas
    * @param localSolver Method to be used locally to optimize on the partition
-   * @param wInit Current w vector
+   * @param vInit Current w vector
    * @param scaling this is the scaling factor beta/K in the paper
    * @return
    */
   private def partitionUpdate [ModelType<:DualModel] (
     model: ModelType,
-    n: Long,
     zipData: Iterator[(DenseVector, Array[LabeledPoint])],
     localSolver: LocalOptimizer[ModelType],
-    wInit: Vector,
+    vInit: Vector,
     scaling: Double,
     seed: Int): Iterator[(DenseVector, DenseVector)] = {
 
@@ -104,10 +136,10 @@ object CoCoA {
     var alpha = zipPair._1
     val alphaOld = alpha.copy
 
-    val (deltaAlpha,deltaW) = localSolver.optimize(model, localData, wInit.asInstanceOf[DenseVector], alpha)
+    val (deltaAlpha,deltaV) = localSolver.optimize(model, localData, vInit.asInstanceOf[DenseVector], alpha)
 
     alpha = plus(alphaOld,times(deltaAlpha,scaling))
 
-    Iterator((deltaW, alpha))
+    Iterator((deltaV, alpha))
   }
 }

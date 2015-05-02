@@ -1,11 +1,11 @@
 ./local-helper.sh distopt.driver \
---trainFile=data/small_train.dat \
+--trainFile=data/trainset.dat \
 --testFile=data/regr_test.dat \
---numFeatures=10000 \
+--numFeatures=100000 \
 --numRounds=100 \
 --localIterFrac=1.0 \
---numSplits=8 \
---lambda=1.0 \
+--numSplits=1 \
+--lambda=0.001 \
 --justCoCoA=true \
 --beta=1.0 \
 --sgdIterations=100
