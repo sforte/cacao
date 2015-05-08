@@ -49,3 +49,11 @@ project/plugins/project/
 data
 src/main/scala/solvers/CaCaO.scala
 src/main/scala/GenericsTest.scala
+report/report.aux
+
+report/report.aux
+report/report.bbl
+report/report.blg
+report/report.dvi
+report/report.out
+report/report.log
