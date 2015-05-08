@@ -3,7 +3,7 @@
 --testFile=data/regr_test.dat \
 --numFeatures=100000 \
 --numRounds=100 \
---localIterFrac=1.0 \
+--numPasses=1 \
 --numSplits=1 \
 --lambda=0.001 \
 --justCoCoA=true \

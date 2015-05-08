@@ -1,12 +1,12 @@
-package localsolvers
+package optimizers.coordinate
 
-import distopt.utils.VectorOps._
-import models.{DualModelWithFirstDerivative, DualModel, Loss}
+import breeze.linalg.Vector
+import models.DualModel
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
-import org.apache.spark.mllib.linalg.{Vectors, Vector}
-import org.apache.spark.mllib.regression.LabeledPoint
+import optimizers.SingleCoordinateOptimizer
+import vectors.{LabelledPoint, LazyScaledVector}
 
 /**
  * Derivative free method to optimize to do ascent on a single coordinate.
@@ -21,7 +21,8 @@ class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int = 100)
    * @return Delta alpha
    */
 
-  override def optimize(model: ModelType, pt: LabeledPoint, alpha: Double, v: Vector, epsilon: Double = 0.) = {
+  override def optimize(model: ModelType, pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) :
+    (Double, Vector[Double]) = {
 
     val n = model.n
     val lambda = model.regularizer.lambda
@@ -30,10 +31,9 @@ class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int = 100)
     val x = pt.features
     val y = pt.label
 
-//    val w = Vectors.zeros(x.size)
     val w = model.regularizer.dualGradient(v)
 
-    val (xx,xw) = (dot(x,x),dot(x,w))
+    val (xx, xw) = (x dot x, x dot w)
 
     // the function we wish to optimize on
     val func = new UnivariateRealFunction {
@@ -52,7 +52,6 @@ class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int = 100)
 
     val deltaAlpha = alphaNew - alpha
 
-    (deltaAlpha, times(x, deltaAlpha/(lambda*n)))
-//    (deltaAlpha, null)
+    (deltaAlpha, new LazyScaledVector(x, deltaAlpha/(lambda*n)))
   }
 }

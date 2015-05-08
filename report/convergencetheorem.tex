@@ -1,0 +1,167 @@
+\newcommand{\vsub}[2]{#1_{\langle[#2]\rangle}}
+
+\section{Proof of Theorem \ref{thm:convergence} -- Main Convergence Theorem}
+
+\begin{proof}
+(The first part of the proof is identical (and thus copypasted) from \cite{CoCoA})\\
+From the definition of the update performed by Algorithm \ref{alg:gencocoa}, we have
+$\av^{(t+1)}
+  =
+  \av^{(t)}
+  + \frac{1}{K} \sum_{k=1}^K   \vsub{ \Delta \av }{k}$.
+Let us estimate the change of objective function after one outer iteration.
+  Then using concavity of $D$ we have
+\begin{align*}
+D(\av^{(t+1)})
+ &=
+ D\left(\av^{(t)}
+  + \tfrac1K \textstyle{\sum}_{k=1}^K
+      \vsub{\Delta \av}{k}
+     \right)
+  =
+  D\left(\tfrac1K \textstyle{\sum}_{k=1}^K (
+     \av^{(t)} + \vsub{\Delta \av}{k} )
+        \right)
+\\&\geq
+ \tfrac1K \textstyle{\sum}_{k=1}^K D(
+    \av^{(t)} + \vsub{\Delta \av}{k} ).
+\end{align*}
+Subtracting $D(\av^{(t)})$ from both sides and denoting by
+$\hat \av^*_{[k]}$ the local maximizer as in \eqref{eq:suboptimality}
+we obtain
+\begin{align*}
+D(\av^{(t+1)})-D(\av^{(t)})
+ &\geq
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \left[ D(
+    \av^{(t)} + \vsub{\Delta \av}{k}
+      )
+    -D(\av^{(t)}) \right]
+\\
+ &=
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \left[ D(
+    \av^{(t)} + \vsub{\Delta \av}{k}
+      )
+      -D((\av_{[t]}^{(1)},\dots,\hat\av^*_{[k]},\dots,\av_{[t]}^{(K)}))
+      \right.
+      \\ &\quad \left.
+      +D((\av_{[t]}^{(1)},\dots,\hat\av^*_{[k]},\dots,\av_{[t]}^{(K)}))
+    -D(\av^{(t)}) \right]
+\\
+&\overset{\eqref{eq:suboptimality}}{=}
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \left[
+ \suboptlocal(\av^{(t)})
+ - \suboptlocal(\av^{(t)}+   \Delta\vsub{\av}{k} )
+ \right].
+\end{align*}
+Considering the expectation of this quantity, we are now ready to use Assumption \ref{asm:localImprobvment} on the \emph{local geometric improvement} of the inner procedure. We have
+\begin{align*}
+\E[D(\av^{(t+1)})-D(\av^{(t)})\,|\,\av^{(t)}]
+ &\geq
+ \tfrac1K \textstyle{\sum}_{k=1}^K
+ \E[
+  \suboptlocal(\av^{(t)})
+ - \suboptlocal(\av^{(t)}+   \Delta\vsub{\av}{k} )
+ \,|\, \av^{(t)} ]
+\\
+&\overset{\eqref{eq:localGeometricRate}}{\geq}
+ \tfrac1K  (1-\Theta)
+ \textstyle{\sum}_{k=1}^K
+  \suboptlocal(\av^{(t)}) .
+\end{align*}
+(Copypasted part ends here, the proof now slightly diverges)\\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+It remains to bound
+$\textstyle{\sum}_{k=1}^K \suboptlocal(\av^{(t)})$.
+\begin{align*}
+\textstyle{\sum}_{k=1}^K
+  \suboptlocal(\av^{(t)})
+&\overset{\eqref{eq:suboptimality}}{=}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \max_{ \hat \av \in \R^{n}}
+ \left\{ \textstyle{\sum}_{k=1}^K
+\left[D((\av_{[1]},\dots,\hat \av_{[k]},\dots,
+\av_{[K]}))
+- D((\av_{[1]},\dots,\av_{[k]},\dots,
+\av_{[K]}))
+\right] \right\}
+\\
+&\overset{\eqref{eq:gensdcaDual}}{=} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \max_{ \hat \av \in \R^{n}}
+ \left\{
+  \tfrac1n \textstyle{\sum}_{i=1}^n
+ (-  \ell_i^*(-\hat \alpha_i)
++ \ell_i^*(- \alpha^{(t)}_i)  )
+ \right. \\ &\quad\quad\quad \left.
+ +
+\lambda  \textstyle{\sum}_{k=1}^K
+\left[
+ -  \dualreg\big( \vv(\av^{(t)}) + \vv (\hat \av_{[k]} - \av^{(t)}_{[k]}) \big)
++  \dualreg\big( \vv(\av^{(t)}) \big)
+\right] \right\}
+\\
+&\overset{smoothness}{>=} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \max_{ \hat \av \in \R^{n}}
+ \left\{
+  \tfrac1n \textstyle{\sum}_{i=1}^n
+ (-  \ell_i^*(-\hat \alpha_i)
++ \ell_i^*(- \alpha^{(t)}_i)  )
+ \right. \\ &\quad\quad\quad \left.
+ +
+\lambda  \textstyle{\sum}_{k=1}^K
+\left[
+ - \dualreg\big(\vv(\av^{(t)})\big) -\nabla\dualreg\big(\vv(\av^{(t)})\big)^T \vv\big(\hat\av_{[k]} -\av_{[k]}^{(t)}\big)
+ - \frac{1}{2\mu}\norm{\vv\big(\hat\av_{[k]}-\av_{[k]}^{(t)}\big)}^2 + \dualreg\big(\vv(\av^{(t)})\big)
+\right] \right\}
+\\
+&= %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\max_{ \hat \av \in \R^{n}}
+ \left\{
+  D(\hat \av)
+  -D(\av^{(t)})
+ +\lambda(\dualreg(\vv(\hat\av)) - \dualreg(\vv(\av^{(t)})))
+  \right. \\ &\quad\quad\quad \left.
+ +
+\lambda  \textstyle{\sum}_{k=1}^K
+\left[
+ -\nabla\dualreg\big(\vv(\av^{(t)})\big)^T \vv\big(\hat\av_{[k]} -\av_{[k]}^{(t)}\big)
+ - \frac{1}{2\mu}\norm{\vv\big(\hat\av_{[k]}-\av_{[k]}^{(t)}\big)}^2
+\right] \right\}
+\\
+&= %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\max_{ \hat \av \in \R^{n}}
+ \left\{
+  D(\hat \av)
+  -D(\av^{(t)})
+ +\lambda (\dualreg(\vv(\hat\av)) - \dualreg(\vv(\av^{(t)})))
+  \right. \\ &\quad\quad\quad \left.
+ -\lambda\nabla\dualreg\big(\vv(\av^{(t)})\big)^T \vv\big(\hat\av -\av^{(t)}\big)
+-\frac{\lambda}{2\mu}  \textstyle{\sum}_{k=1}^K
+\left[
+ \norm{\vv\big(\hat\av_{[k]}-\av_{[k]}^{(t)}\big)}^2
+\right] \right\}
+\\
+&\overset{delta-stronglyconvex assumption}{>=} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\max_{ \hat \av \in \R^{n}}
+ \left\{
+  D(\hat \av)
+  -D(\av^{(t)})
+ +\frac{\lambda\delta}{2}\norm{\vv\big(\hat\av-\av^{(t)}\big)}^2
+  \right. \\ &\quad\quad\quad \left.
+-\frac{\lambda}{2\mu}  \textstyle{\sum}_{k=1}^K
+\left[
+ \norm{\vv\big(\hat\av_{[k]}-\av_{[k]}^{(t)}\big)}^2
+\right] \right\}
+\\
+&= %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\max_{ \hat \av \in \R^{n}}
+ \left\{
+  D(\hat \av)
+  -D(\av^{(t)})
+ - \frac{\sigma}{2\lambda n^2} \norm{\hat\av-\av^{(t)}}^2
+  \right. \left.
+ \right\}
+\end{align*}
+And then the proof continues just the same.
+\end{proof}

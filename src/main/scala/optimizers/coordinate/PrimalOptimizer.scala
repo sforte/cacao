@@ -1,12 +1,12 @@
-package localsolvers
+package optimizers.coordinate
 
-import distopt.utils.VectorOps._
+import breeze.linalg.Vector
 import models.DualModel
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
-import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.mllib.regression.LabeledPoint
+import optimizers.SingleCoordinateOptimizer
+import vectors.{LabelledPoint, LazyScaledVector}
 
 /**
  * Derivative free method to do descent on a local primal problem
@@ -21,17 +21,17 @@ class PrimalOptimizer [-ModelType<:DualModel] (numIter: Int)
    * @return Delta alpha
    */
 
-  override def optimize(model: ModelType, pt: LabeledPoint, alpha: Double, v: Vector, epsilon: Double = 0.0) = {
+  override def optimize(model: ModelType, pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
 
     val n = model.n
     val lambda = model.regularizer.lambda
     val primalLoss = model.primalLoss
-    val w = model.regularizer.dualGradient(v)
+    val w : Vector[Double] = model.regularizer.dualGradient(v)
 
     val x = pt.features
     val y = pt.label
 
-    val (xx,wx) = (dot(x,x),dot(w,x))
+    val (xx,wx) = (x dot x, w dot x)
 
     val func = new UnivariateRealFunction {
       def value(deltaA: Double) =
@@ -46,6 +46,7 @@ class PrimalOptimizer [-ModelType<:DualModel] (numIter: Int)
 
     val deltaAlpha = brent.optimize(func, GoalType.MINIMIZE, -1000, 1000, 0)
 
-    (deltaAlpha, times(x, deltaAlpha/(lambda*n)))
+    //    (deltaAlpha, x * (deltaAlpha/(lambda*n)))
+    (deltaAlpha, new LazyScaledVector(x, deltaAlpha/(lambda*n)))
   }
 }

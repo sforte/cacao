@@ -1,17 +1,18 @@
 package distopt
 
-import _root_.solvers.{AccCoCoA, MllibLogisticWithL1}
-import distopt.solvers._
-import distopt.utils.OptUtils
-import distopt.utils.VectorOps._
-import localsolvers._
+import models.regularizer.L1Regularizer
+import optimizers.coordinate.BrentMethodOptimizerWithFirstDerivative
+import optimizers.local.SDCAOptimizer
+import optimizers.distributed.{MllibLogisticWithL1, AccCoCoA}
 import models._
 import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionWithSGD, SVMModel}
 import org.apache.spark.mllib.feature.Normalizer
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.optimization.L1Updater
-import org.apache.spark.mllib.regression.{LabeledPoint, LassoModel, LassoWithSGD}
+import org.apache.spark.mllib.regression.{LassoModel, LassoWithSGD}
+import utils.OptUtils
+import vectors.LabelledPoint
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -35,7 +36,7 @@ object driver {
     val testFile = options.getOrElse("testFile", "")
     val lambda = options.getOrElse("lambda", "0.01").toDouble
     val numRounds = options.getOrElse("numRounds", "200").toInt
-    val localIterFrac = options.getOrElse("localIterFrac", "1.0").toDouble
+    val numPasses = options.getOrElse("numPasses", "1").toInt
     val beta = options.getOrElse("beta", "1.0").toDouble
     val sgdIterations = options.getOrElse("sgdIterations", "100").toInt
     val seed = options.getOrElse("seed", "0").toInt
@@ -47,22 +48,22 @@ object driver {
     println("testfile:     " + testFile)
     println("lambda:       " + lambda)
     println("numRounds:    " + numRounds)
-    println("localIterFrac:" + localIterFrac)
+    println("numPasses:    " + numPasses)
     println("beta          " + beta)
     println("seed          " + seed)
     println("sgdIterations " + sgdIterations)
 
-    //  setting up Spark
+    // setting up Spark
     val conf = new SparkConf().setMaster(master)
       .setAppName("demoCoCoA")
       .setJars(SparkContext.jarOfObject(this).toSeq)
     val sc = new SparkContext(conf)
 
-    val data = MLUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
+    val data = OptUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
     val n = data.count()
 
 //    val model = new LogisticRegressionModel(n, new L2Regularizer(lambda))
-    val model = new LogisticRegressionModel(n, new L1Regularizer(lambda, 0.1))
+    val model = new LogisticRegressionModel(n, new L1Regularizer(lambda, 0.01))
 //    val model = new SVMClassificationModel(n, new L2Regularizer(lambda))
 //    val model = new SVMClassificationModel(n, new L1Regularizer(lambda, epsilon = 0.0001))
 //    val model = new RidgeRegressionModel(n, new L2Regularizer(lambda))
@@ -72,14 +73,13 @@ object driver {
     val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
 //    val scOptimizer = new RidgeOptimizer
 //    val scOptimizer = new PrimalOptimizer(sgdIterations*10)
-    val localIters = Math.max((localIterFrac * n / data.partitions.size).toInt,1)
-    val localSolver = new SDCAOptimizer(scOptimizer, localIters)
+    val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
 //    CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
     AccCoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
 
     MllibLogisticWithL1.run(data, lambda, model, 100000)
-//    0.39316973670152233
+
     sc.stop()
    }
 }

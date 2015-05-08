@@ -1,0 +1,180 @@
+%%%%%%%% Primal loss function %%%%%%%%
+\newcommand{\primalloss} {\ell_i( \wv^T \x_i )}
+%%%%%%%% Dual loss function %%%%%%%%
+\newcommand{\dualloss} {\ell_i^*(-\alpha_i)}
+%%%%%%%% Primal regularizer %%%%%%%%
+\newcommand{\primalreg}{\emph{g}}
+%%%%%%%% Dual regularizer regularizer %%%%%%%%
+\newcommand{\dualreg}{\emph{g}^\star}
+%%%%%%%% 1/(lambda n) %%%%%%%%
+\newcommand{\onelambdan}{\frac{1}{\lambda n}}
+%%%%%%%% sum from i to n %%%%%%%%
+\newcommand{\sumn}{\sum_{i=1}^n}
+%%%%%%%% dual gradient %%%%%%%%
+\newcommand{\dualgrad}{\nabla \dualreg(\av)}
+%%%%%%%% local algorithm name %%%%%%%%
+\newcommand{\localalgname}{\textsc{GenLocalDualMethod}\xspace}
+
+%%%%%%%% CoCoA Primal form %%%%%%%%
+\newcommand{\sdcaPrimal}{
+\begin{equation}
+\label{eq:sdcaPrimal}
+\min_{\wv \in\R^d} \quad \Big[\ P(\wv) := \frac{\lambda}{2} \norm{\wv}^2 +\frac1n
+                       \sum_{i=1}^n \primalloss \ \Big].
+\end{equation}
+}
+
+%%%%%%%% CoCoA Dual form %%%%%%%%
+\newcommand{\sdcaDual}{
+\begin{equation}
+    \label{eq:sdcaDual}
+    \max_{\av \in \R^n} \quad \Big[ \
+    D(\av) := - \frac{\lambda}{2} \norm{ A\av }^2
+    - \frac1n \sum_{i=1}^n \dualloss \ \Big],
+\end{equation}
+}
+
+%%%%%%%% Generalized CoCoA Primal form %%%%%%%%
+\newcommand{\gensdcaPrimal}{
+\begin{equation}
+\label{eq:gensdcaPrimal}
+\min_{\wv \in\R^d} \quad \Big[\ P(\wv) := \lambda \primalreg(\wv) +\frac1n
+                       \sum_{i=1}^n \primalloss \ \Big].
+\end{equation}
+}
+
+%%%%%%%% Generalized CoCoA Dual form %%%%%%%%
+\newcommand{\gensdcaDual}{
+\begin{equation}
+    \label{eq:gensdcaDual}
+    \max_{\av \in \R^n} \quad \Big[ \
+    D(\av) := - \lambda \dualreg( \vv(\av) )
+    - \frac1n \sum_{i=1}^n \dualloss \ \Big],
+\end{equation}
+}
+
+%%%%%%%% v and w definition %%%%%%%%
+\newcommand{\vwdef}{
+\begin{equation}
+\label{eq:vwdef}
+\vv(\av) = \onelambdan \sumn X_i \alpha_i \quad\quad \wv(\av) = \dualgrad.
+\end{equation}
+}
+
+%%%%%%%% duality gap %%%%%%%%
+\newcommand{\dualitygap}{
+\begin{equation}
+\label{eq:vwdef}
+P(\wv(\av)) - D(\av)
+\end{equation}
+}
+
+%%%%%%%% Generalized CoCoA algorithm %%%%%%%%
+\newcommand{\gencocoa}{
+\begin{algorithm}[H]
+\label{alg:gencocoa}
+\SetKwInput{Init}{Initialize}
+\SetKwFor{Forloop}{for}{}{end}
+\SetAlgoLined
+\KwIn{$T \ge 1, $}
+\KwData{$\{(\x_i,y_i)\}_{i=1}^n$ distributed over $K$ machines}
+\Init{$\av_{[k]}^{(0)} \gets \0$ for all machines $k$, and $\vv^{(0)} \gets \0$}
+\Forloop{ $t = 1,2, \dots ,T$}{
+	%\textit{broadcast} $\vv^{(t-1)}$ \\
+	\Forloop{{\bfseries all machines $k = 1, 2, \dots ,K$ in parallel}}{
+	$(\Delta\av_{[k]},\Delta\vv_{k}) \gets \localalgname(\av^{(t-1)}_{[k]},\vv^{(t-1)})$ \\
+	$\av^{(t)}_{[k]} \gets \av^{(t-1)}_{[k]} + \frac{1}{K} \Delta\av_{[k]}$ \\
+	}
+    \textit{reduce} $\vv^{(t)} \gets \vv^{(t-1)} + \frac{1}{K} \sum_{k=1}^K \Delta \vv_{k}$ \\
+}
+\KwOut{\big($\av^{(T)}$,$\nabla \dualreg(\vv^{(T)})$\big)}
+\end{algorithm}
+}
+
+%%%%%%%% Single coordinate hard problem %%%%%%%%
+\newcommand{\schardproblem}{
+- \lambda  \nabla\dualreg({ \vv^{(h-1)} +\frac{1}{\lambda n} \Delta\alpha\,\x_i })
+		    - \frac{1}{n}\ell_i^*\big(-(\alpha_i^{(h-1)}+\Delta\alpha)\big)
+}
+
+%%%%%%%% Single coordinate relaxed problem %%%%%%%%
+\newcommand{\screlaxedproblem}{
+- \lambda \nabla\dualreg(\vv^{(h-1)})^T \Delta\alpha_i\x_i - \frac{1}{2 \lambda n} \norm{\Delta\alpha\x_i}^2
+		    - \frac{1}{n}\ell_i^*\big(-(\alpha_i^{(h-1)}+\Delta\alpha)\big)
+}
+
+%%%%%%%% Generalized Local algorithm %%%%%%%%
+\newcommand{\genlocalsdca}{
+\begin{algorithm}[H]
+%\caption{\localSDCA: SDCA iterations for problem \eqref{eq:sdcaDual} on a single coordinate block~$k$}
+\label{proc:localSDCA}
+\SetKwInput{Init}{Initialize}
+\SetKwFor{Forloop}{for}{}{end}
+\SetAlgoLined
+\KwIn{$H \ge 1$, $\av_{[k]}\in\R^{n_k}$, and $\vv\in\R^d$ consistent with other coordinate blocks of $\av$ s.t. $\vv = \vv(\av)$}
+\KwData{Local $\{(\x_i,y_i)\}_{i=1}^{n_k}$} %\mathcal{I}_k
+\Init{$\vv^{(0)} \gets \vv$,\, $\Delta \av_{[k]} \gets {\bf 0} \in \R^{n_k}$}
+	\Forloop{$h = 1, 2, \dots ,H$}{
+		\textit{choose} $i \in \{1,2,\dots,n_k\}$ \textit{uniformly at random} \\  %TODO: make clear the data is local!! $i \in \mathcal{I}_k$
+		\textit{find} $\Delta\alpha$ \textit{maximizing } $ % \gets \argmax_{\Delta\alpha}
+		    \schardproblem$ \\
+		$\alpha_i^{(h)}\gets \alpha_i^{(h-1)} + \Delta\alpha$ \\ % too many variables
+		$(\Delta \alpha_{[k]})_i \gets (\Delta \alpha_{[k]})_i + \Delta\alpha$ \\
+		$\vv^{(h)} \gets \vv^{(h-1)} + \frac{1}{\lambda n}\Delta\alpha\,\x_i$ \\
+	}
+\KwOut{$\Delta\av_{[k]}$ and $\Delta\vv := A_{[k]} \Delta\av_{[k]}$ }
+\end{algorithm}
+}
+
+%%%%%%%% Local geometric improvement assumption %%%%%%%%
+\newcommand{\localgeomimpr}{
+\begin{assumption}[Local Geometric Improvement of \localalgname]\label{asm:localImprobvment}
+We assume that there exists $\Theta\in [0,1)$ such that for any given $\av$, \localalgname when run on block $k$ alone returns a
+(possibly random) update $\Delta \av_{[k]}$
+such that
+\begin{align}\label{eq:localGeometricRate}
+ \E[\epsilon_{D,k}((\av_{[1]},\dots,\av_{[k-1]},\av_{[k]}+\Delta \av_{[k]},
+ \av_{[k+1]},\dots, \av_{[K]}  )) ]
+  \leq \Theta \cdot \epsilon_{D,k}( \av ).
+\end{align}
+\end{assumption}
+}
+
+\newcommand{\suboptimality}{
+\begin{equation}\label{eq:suboptimality}
+\suboptlocal(\av) :=
+\max_{\hat \av_{[k]} \in \R^{n_k}}
+D((\av_{[1]},\dots,\hat \av_{[k]},\dots,\av_{[K]})) - D((\av_{[1]},\dots,\av_{[k]},\dots,\av_{[K]})).
+\end{equation}
+}
+
+\newcommand{\convergence}{
+\begin{theorem}\label{thm:convergence}
+Assume that Algorithm \ref{alg:gencocoa} is run for $T$ outer iterations on $K$ worker machines,
+with the procedure \localalgname having local geometric improvement $\Theta$.
+Further, assume the loss functions $\ell_i$ are $(1/\gamma)$-smooth and that the regularizer $\primalreg$
+is $(1/\delta)$-smooth and $\mu$-strongly convex.
+Then the following geometric convergence rate holds for the global (dual) objective:
+\begin{equation}\label{eq:convergenceResult}
+\E[D(\av^*) - D(\av^{(T)})]
+\leq
+\left(1-(1-\Theta)
+ \frac1K
+  \frac{\lambda n \gamma }{\sigma
+   + \lambda n \gamma }
+\right)^T     \left(D(\av^*) - D(\av^{(0)})\right).
+\end{equation}
+Here $\sigma$ is any real number satisfying
+\begin{align}\label{eq:sigma}
+ \sigma
+\geq%-----------------------------------------
+\sigma_{\min} := \max_{\av \in \R^n}
+\lambda^2 n^2 %or alternatively could use the data matrix X instead of the scaled A matrix
+\frac{ \mu^{-1}\textstyle{\sum}_{k=1}^K
+  \norm{ \vv(\av_{[k]}) }^2  -
+  \delta\norm{ \vv(\av) }^2
+   }
+   {\norm{ \av }^2   } \geq 0.
+\end{align}
+\end{theorem}
+}

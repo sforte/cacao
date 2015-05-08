@@ -1,0 +1,48 @@
+\section{Generalized CoCoA}
+
+\subsection{Setup}
+As presented in the CoCoA paper \cite{CoCoA} the algorithm currently has support for problems having the following
+primal form:
+\sdcaPrimal
+
+It is though possible, in a very similar theoretical and implementative framework, to solve problems of the following
+more general form:
+\gensdcaPrimal
+where $\primalreg$ is a 1-convex function with respect to the L2 norm.
+
+Similarly as for the L2 regularized problem solved by CoCoA, and as done in \cite{ShalevShwartz:2012tn}, we can define
+a dual problem:
+\gensdcaDual
+where:
+\vwdef
+A primal-dual relation also holds for these two problems, with the duality gap \dualitygap acting as an upperbound
+to the suboptimality of the primal and the dual.
+
+\subsection{Method description}
+In this section we present a generalized CoCoA algorithm to solve this more general problem. The high level structure of
+the algorithm is very similar (if not almost identical) to the original algorithm and it is as follows: \\
+\gencocoa
+The only difference to the original CoCoA is the use of the $\vv(\av)$ vectors instead of the $\wv(\av)$. This vector
+is computed at the end, using the gradient of the dual conjugate of the regularizer. Another difference is that the
+local method is now required to optimize the generalized dual form as in \ref{eq:gensdcaDual} (for its local coordinated)
+instead of the original CoCoA problem.
+Same as in \cite{CoCoA} we'll also make the following assumption on the local solver:
+\localgeomimpr
+where:
+\suboptimality
+Given this we can state an theorem equivalent to Theorem 2 in \cite{CoCoA} (the proof can be found in the appendix):
+\convergence
+
+\subsection{Local SDCA}
+In this section we'll present an SDCA method, very similar to the one in \cite{ShalevShwartz:2012tn} used to solve the
+generalized local dual problem. The algorithm is as follows and it's also very similar to the CoCoA one: \\
+\genlocalsdca
+
+Unfortunately solving the problem:
+$$\schardproblem$$
+can be very hard for complex regularizers and it's replaced in \cite{ShalevShwartz:2012tn} by the following relaxed
+lowerbound problem (which still allows for finding the exact solution):
+$$\screlaxedproblem$$
+that is much simpler to solve since it only requires us to be able to compute the gradient $\nabla \dualreg$ and after
+that it can easily be solved by line search. It is also possible to notice that this lowerbound problem is actually
+strict in the case of L2 regularization.
