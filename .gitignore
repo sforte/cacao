@@ -46,6 +46,6 @@ project/plugins/project/
 
 # Jars
 *.jar
-
+data
 src/main/scala/solvers/CaCaO.scala
 src/main/scala/GenericsTest.scala
