@@ -1,6 +1,6 @@
 package models.loss
 
-import models.Loss
+import models.{DifferentiableRealFunction, RealFunction, Loss}
 
 class HingeLoss extends Loss[HingeLossPrimalFunction,HingeLossConjugateFunction] {
   def apply(y: Double) = new HingeLossPrimalFunction(y)
