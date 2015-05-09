@@ -1,9 +1,8 @@
 package optimizers.local
 
 import java.security.SecureRandom
-
 import breeze.linalg.DenseVector
-import models.DualModel
+import models.{Regularizer, RealFunction, Loss}
 import optimizers.{LocalOptimizer, SingleCoordinateOptimizer}
 import vectors.LabelledPoint
 
@@ -11,8 +10,9 @@ import vectors.LabelledPoint
  * A Single Dual Coordinate Ascent based local solver
  * @param scOptimizer The method used to optimize on a single coordinate
  */
-class SDCAOptimizer [-ModelType<:DualModel] (scOptimizer: SingleCoordinateOptimizer[ModelType], numPasses: Int)
-  extends LocalOptimizer[ModelType] {
+class SDCAOptimizer [-LossType<:Loss[RealFunction,RealFunction]]
+  (scOptimizer: SingleCoordinateOptimizer[LossType], numPasses: Int)
+  extends LocalOptimizer[LossType] {
 
   /**
    * @param localData the local data examples
@@ -21,7 +21,9 @@ class SDCAOptimizer [-ModelType<:DualModel] (scOptimizer: SingleCoordinateOptimi
    * @return deltaAlpha and deltaW, summarizing the performed local changes, see paper
    */
   override def optimize(
-    model: ModelType,
+    model: LossType,
+    regularizer: Regularizer,
+    n: Long,
     localData: Array[LabelledPoint],
     vOld: DenseVector[Double],
     alphaOld: DenseVector[Double],
@@ -42,7 +44,7 @@ class SDCAOptimizer [-ModelType<:DualModel] (scOptimizer: SingleCoordinateOptimi
 
         val pt = localData(idx)
 
-        val (scDeltaAlpha, scDeltaV) = scOptimizer.optimize(model, pt, alpha(idx), v)
+        val (scDeltaAlpha, scDeltaV) = scOptimizer.optimize(model, regularizer, n, pt, alpha(idx), v)
 
         v += scDeltaV
         alpha(idx) += scDeltaAlpha

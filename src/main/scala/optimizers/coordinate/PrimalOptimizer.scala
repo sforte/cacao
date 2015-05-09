@@ -1,7 +1,7 @@
 package optimizers.coordinate
 
 import breeze.linalg.Vector
-import models.DualModel
+import models.{Regularizer, Loss, RealFunction}
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
@@ -11,8 +11,8 @@ import vectors.{LabelledPoint, LazyScaledVector}
 /**
  * Derivative free method to do descent on a local primal problem
  */
-class PrimalOptimizer [-ModelType<:DualModel] (numIter: Int)
-  extends SingleCoordinateOptimizer[ModelType] {
+class PrimalOptimizer [-LossType<:Loss[RealFunction,RealFunction]] (numIter: Int)
+  extends SingleCoordinateOptimizer[LossType] {
 
   /**
    * @param pt Point of which we wish to do coordinate ascent
@@ -21,21 +21,22 @@ class PrimalOptimizer [-ModelType<:DualModel] (numIter: Int)
    * @return Delta alpha
    */
 
-  override def optimize(model: ModelType, pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
+  override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
+                        pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
 
-    val n = model.n
-    val lambda = model.regularizer.lambda
-    val primalLoss = model.primalLoss
-    val w : Vector[Double] = model.regularizer.dualGradient(v)
+    val lambda = regularizer.lambda
 
     val x = pt.features
     val y = pt.label
+
+    val primalLoss = loss(y)
+    val w : Vector[Double] = regularizer.dualGradient(v)
 
     val (xx,wx) = (x dot x, w dot x)
 
     val func = new UnivariateRealFunction {
       def value(deltaA: Double) =
-        primalLoss(y, wx + deltaA/(lambda*n) * xx) + 1.0/(2*lambda*n)*math.pow(alpha + deltaA,2)*xx
+        primalLoss(wx + deltaA/(lambda*n) * xx) + 1.0/(2*lambda*n)*math.pow(alpha + deltaA,2)*xx
     }
 
     val brent = new BrentOptimizer
@@ -46,7 +47,6 @@ class PrimalOptimizer [-ModelType<:DualModel] (numIter: Int)
 
     val deltaAlpha = brent.optimize(func, GoalType.MINIMIZE, -1000, 1000, 0)
 
-    //    (deltaAlpha, x * (deltaAlpha/(lambda*n)))
     (deltaAlpha, new LazyScaledVector(x, deltaAlpha/(lambda*n)))
   }
 }

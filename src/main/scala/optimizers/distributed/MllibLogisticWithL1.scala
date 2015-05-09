@@ -1,6 +1,6 @@
 package optimizers.distributed
 
-import models.DualModel
+import models.{Regularizer, RealFunction, Loss}
 import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.optimization.L1Updater
@@ -10,7 +10,8 @@ import vectors.{LabelledPoint, VectorOps}
 
 object MllibLogisticWithL1 {
 
-  def run (data: RDD[LabelledPoint], lambda: Double, model: DualModel, iter: Int) {
+  def run (data: RDD[LabelledPoint], loss: Loss[RealFunction,RealFunction],
+           regularizer: Regularizer, n: Long, iter: Int) {
 
     val data01 = data.map(p => new LabelledPoint(if(p.label==1) 1 else 0,p.features))
                     .map(_.toMllib)
@@ -23,7 +24,7 @@ object MllibLogisticWithL1 {
 
       val logisticAlgo = new LogisticRegressionWithSGD().setIntercept(false).setValidateData(false)
 
-      logisticAlgo.optimizer.setNumIterations(steps).setRegParam(lambda).setUpdater(new L1Updater)
+      logisticAlgo.optimizer.setNumIterations(steps).setRegParam(regularizer.lambda).setUpdater(new L1Updater)
 
       weights = if (weights == null)
         logisticAlgo.run(data01).weights
@@ -31,7 +32,8 @@ object MllibLogisticWithL1 {
         logisticAlgo.run(data01, weights).weights
 
       println(s"Iteration $i")
-      OptUtils.printSummaryStatsFromW(s"Mllib", model, data.mapPartitions(x=>Iterator(x.toArray)), VectorOps.toBreeze(weights))
+      OptUtils.printSummaryStatsFromW(s"Mllib", loss, regularizer, n,
+        data.mapPartitions(x=>Iterator(x.toArray)), VectorOps.toBreeze(weights))
     }
   }
 }

@@ -1,7 +1,7 @@
 package optimizers.coordinate
 
 import breeze.linalg.Vector
-import models.DualModel
+import models.{Regularizer, Loss, RealFunction}
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
@@ -11,8 +11,8 @@ import vectors.{LabelledPoint, LazyScaledVector}
 /**
  * Derivative free method to optimize to do ascent on a single coordinate.
  */
-class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int = 100)
-  extends SingleCoordinateOptimizer[ModelType] {
+class BrentMethodOptimizer [-LossType<:Loss[RealFunction,RealFunction]] (numIter: Int = 100)
+  extends SingleCoordinateOptimizer[LossType] {
 
   /**
    * @param pt Point of which we wish to do coordinate ascent
@@ -21,24 +21,25 @@ class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int = 100)
    * @return Delta alpha
    */
 
-  override def optimize(model: ModelType, pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) :
+  override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
+                        pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) :
     (Double, Vector[Double]) = {
 
-    val n = model.n
-    val lambda = model.regularizer.lambda
-    val dualLoss = model.dualLoss
+    val lambda = regularizer.lambda
 
-    val x = pt.features
     val y = pt.label
+    val x = pt.features
 
-    val w = model.regularizer.dualGradient(v)
+    val dualLoss = loss.conjugate(y)
+
+    val w = regularizer.dualGradient(v)
 
     val (xx, xw) = (x dot x, x dot w)
 
     // the function we wish to optimize on
     val func = new UnivariateRealFunction {
       def value(a: Double) =
-        - (a-alpha)*xw - xx*math.pow(a-alpha,2)/(2*lambda*n) - dualLoss(y,-a)
+        - (a-alpha)*xw - xx*math.pow(a-alpha,2)/(2*lambda*n) - dualLoss(-a)
     }
 
     val brent = new BrentOptimizer
@@ -47,7 +48,7 @@ class BrentMethodOptimizer [-ModelType<:DualModel] (numIter: Int = 100)
     brent.setAbsoluteAccuracy(4*Math.ulp(1d))
 
     // the domain on which we optimize is determined by the domain of the conjugate loss function
-    val domain = (-dualLoss.domain(y)._2, -dualLoss.domain(y)._1)
+    val domain = (-dualLoss.domain._2, -dualLoss.domain._1)
     val alphaNew = brent.optimize(func, GoalType.MAXIMIZE, domain._1, domain._2, alpha)
 
     val deltaAlpha = alphaNew - alpha

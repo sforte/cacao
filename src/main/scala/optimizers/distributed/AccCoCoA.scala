@@ -16,23 +16,24 @@ object AccCoCoA {
    * 
    * @param sc Spark context
    * @param data Data points on which we wish to train the model
-   * @param model The model we are training (logistic,svm,ridge etc.)
+   * @param loss The model we are training (logistic,svm,ridge etc.)
    * @param localSolver Method used to solve subproblems on local partitions
    * @param numRounds Number of outer iterations of CoCoA.
    * @param beta scaling parameter. beta=1 gives averaging, beta=K=data.partitions.size gives (aggressive) adding
    * @return The optimal (or near optimal) w and alpha vectors
    */
-  def runCoCoA [ModelType<:DualModel] (
+  def runCoCoA [LossType<:Loss[RealFunction,RealFunction]] (
     sc: SparkContext,
     data: RDD[LabelledPoint],
-    model: ModelType,
-    localSolver: LocalOptimizer[ModelType],
+    loss: LossType,
+    regularizer: Regularizer,
+    n: Long,
+    localSolver: LocalOptimizer[LossType],
     numRounds: Int,
     beta: Double,
     seed: Int) : (Vector[Double], RDD[DenseVector[Double]]) = {
 
-    val n = model.n
-    val lambda = model.regularizer.lambda
+    val lambda = regularizer.lambda
     val R = math.sqrt(data.map(pt => l2norm(pt.features)).max)
     val gamma = 4.0
     val kappa = R*R/(gamma*n) - lambda
@@ -60,38 +61,36 @@ object AccCoCoA {
     var partAlphas = alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray)), preservesPartitioning = true)
 
     var xi = (1 + 1/(eta*eta)) *
-      (computePrimalObjective(partData, model, model.regularizer.dualGradient(v))
-        - computeDualObjective(partData, model, v, partAlphas))
+      (computePrimalObjective(partData, loss, regularizer, n, regularizer.dualGradient(v))
+        - computeDualObjective(partData, loss, regularizer, n, v, partAlphas))
 
-    val oldreg = model.regularizer
+    var accreg = regularizer
 
     for (t <- 2 to 100) {
 
       val eps = xi * eta / (2*(1 + 1/(eta*eta)))
 
-      model.regularizer = new AccRegularizer(oldreg, kappa, y)
+      accreg = new AccRegularizer(regularizer, kappa, y)
 
       y = (w * (-bbeta)).toDenseVector
 
-      val asdf = CoCoA.runCoCoA(sc, partData, partAlphas, model, localSolver, numRounds, beta, seed, eps)
+      val asdf = CoCoA.runCoCoA(sc, partData, partAlphas, loss, regularizer, n,
+                                localSolver, numRounds, beta, seed, eps)
 
       v = asdf._1
-      w = model.regularizer.dualGradient(asdf._1)
+      w = accreg.dualGradient(asdf._1)
       partAlphas = asdf._2
 
       y = (w * (1 + bbeta) + y).toDenseVector
 
       xi *= 1 - eta/2
 
-      model.regularizer = oldreg
-
-      OptUtils.printSummaryStatsPrimalDual("AccCoCoA", partData, model,
+      OptUtils.printSummaryStatsPrimalDual("AccCoCoA", partData, loss,
+        regularizer, n,
         (partData zip partAlphas).flatMap(p=> p._1 zip p._2.data)
           .map { case(LabelledPoint(y,x), a) => x * (a/(lambda*n)) }.reduce(_+_).toDenseVector,
         partAlphas)
     }
-
-    model.regularizer = oldreg
 
     null
   }

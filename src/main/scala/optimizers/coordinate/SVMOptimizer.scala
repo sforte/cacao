@@ -1,9 +1,10 @@
 package optimizers.coordinate
 
 import breeze.linalg.Vector
+import models.loss.HingeLoss
 import optimizers.SingleCoordinateOptimizer
 import vectors.{LabelledPoint, LazyScaledVector}
-import models.SVMClassificationModel
+import models.Regularizer
 
 /**
  * Created by simone on 08/05/15.
@@ -12,12 +13,12 @@ import models.SVMClassificationModel
   An ad-hoc single coordinate optimizer for SVM; the optimization is
   solvable in closed form.
  */
-class SVMOptimizer extends SingleCoordinateOptimizer[SVMClassificationModel] {
-  def optimize(model: SVMClassificationModel, pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
+class SVMOptimizer extends SingleCoordinateOptimizer[HingeLoss] {
+  def optimize(model: HingeLoss, regularizer: Regularizer, n: Long,
+               pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
 
-    val lambda = model.regularizer.lambda
-    val n = model.n
-    val w : Vector[Double] = model.regularizer.dualGradient(v)
+    val lambda = regularizer.lambda
+    val w : Vector[Double] = regularizer.dualGradient(v)
 
     val x = pt.features
     val y = pt.label

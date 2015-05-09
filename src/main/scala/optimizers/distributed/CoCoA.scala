@@ -18,26 +18,27 @@ object CoCoA {
    *
    * @param sc Spark context
    * @param data Data points on which we wish to train the model
-   * @param model The model we are training (logistic,svm,ridge etc.)
+   * @param loss The model we are training (logistic,svm,ridge etc.)
    * @param localSolver Method used to solve subproblems on local partitions
    * @param numRounds Number of outer iterations of CoCoA.
    * @param beta scaling parameter. beta=1 gives averaging, beta=K=data.partitions.size gives (aggressive) adding
    * @return The optimal (or near optimal) w and alpha vectors
    */
-  def runCoCoA [ModelType<:DualModel] (
+  def runCoCoA [LossType<:Loss[RealFunction,RealFunction]] (
     sc: SparkContext,
     data: RDD[Array[LabelledPoint]],
     alphaInit: RDD[DenseVector[Double]],
-    model: ModelType,
-    localSolver: LocalOptimizer[ModelType],
+    loss: LossType,
+    regularizer: Regularizer,
+    n: Long,
+    localSolver: LocalOptimizer[LossType],
     numRounds: Int,
     beta: Double,
     seed: Int,
     epsilon: Double = 0.0) : (Vector[Double], RDD[DenseVector[Double]]) = {
 
-    val n = model.n
     val parts = data.count()
-    val lambda = model.regularizer.lambda
+    val lambda = regularizer.lambda
     val scaling = beta / parts
 
     var alpha = alphaInit
@@ -50,13 +51,13 @@ object CoCoA {
     println(Calendar.getInstance.getTime)
 
     var t = 1
-    var gap = computePrimalObjective(data, model, model.regularizer.dualGradient(v))
-              - computeDualObjective(data, model, v, alpha)
+    var gap = computePrimalObjective(data, loss, regularizer, n, regularizer.dualGradient(v))
+              - computeDualObjective(data, loss, regularizer, n, v, alpha)
 
     while (t <= numRounds && gap > epsilon) {
       val vv = sc.broadcast(v)
       val updates = (alpha zip data).mapPartitions(
-        partitionUpdate(model,_,localSolver,vv,seed+t),preservesPartitioning=true).cache()
+        partitionUpdate(loss,regularizer,n,_,localSolver,vv,seed+t),preservesPartitioning=true).cache()
 
       alpha = (alpha zip updates.map(_._2)).map {
         case (alphaOld, deltaAlpha) => alphaOld + deltaAlpha * scaling }.cache()
@@ -65,7 +66,7 @@ object CoCoA {
 
       println(s"Iteration: $t")
       if (t % 1 == 0) {
-        gap = printSummaryStatsPrimalDual("CoCoA", data, model, v, alpha)
+        gap = printSummaryStatsPrimalDual("CoCoA", data, loss, regularizer, n, v, alpha)
         println(epsilon)
       }
 
@@ -74,16 +75,18 @@ object CoCoA {
 
     println(Calendar.getInstance.getTime)
 
-    printSummaryStatsPrimalDual("CoCoA", data, model, v, alpha)
+    printSummaryStatsPrimalDual("CoCoA", data, loss, regularizer, n, v, alpha)
 
     (v, alpha)
   }
 
-  def runCoCoA [ModelType<:DualModel] (
+  def runCoCoA [LossType<:Loss[RealFunction,RealFunction]] (
     sc: SparkContext,
     data: RDD[LabelledPoint],
-    model: ModelType,
-    localSolver: LocalOptimizer[ModelType],
+    loss: LossType,
+    regularizer: Regularizer,
+    n: Long,
+    localSolver: LocalOptimizer[LossType],
     numRounds: Int,
     beta: Double,
     seed: Int,
@@ -94,7 +97,8 @@ object CoCoA {
     val partData = data.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true).cache()
     val partAlphas = alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray)), preservesPartitioning = true)
 
-    val (vNew, alphaNew) = runCoCoA(sc, partData, partAlphas, model, localSolver, numRounds, beta, seed, epsilon)
+    val (vNew, alphaNew) =
+      runCoCoA(sc, partData, partAlphas, loss, regularizer, n, localSolver, numRounds, beta, seed, epsilon)
 
     (vNew, alphaNew.flatMap(_.toArray))
   }
@@ -107,10 +111,12 @@ object CoCoA {
    * @param vInit Current w vector
    * @return
    */
-  private def partitionUpdate [ModelType<:DualModel] (
-    model: ModelType,
+  private def partitionUpdate [LossType<:Loss[RealFunction,RealFunction]] (
+    loss: LossType,
+    regularizer: Regularizer,
+    n: Long,
     zipData: Iterator[(DenseVector[Double], Array[LabelledPoint])],
-    localSolver: LocalOptimizer[ModelType],
+    localSolver: LocalOptimizer[LossType],
     vInit: Broadcast[DenseVector[Double]],
     seed: Int): Iterator[(DenseVector[Double], DenseVector[Double])] = {
 
@@ -119,7 +125,7 @@ object CoCoA {
     val alpha = zipPair._1
     val v = vInit.value
 
-    val (deltaAlpha,deltaV) = localSolver.optimize(model, localData, v, alpha)
+    val (deltaAlpha,deltaV) = localSolver.optimize(loss, regularizer, n, localData, v, alpha)
 
     Iterator((deltaV, deltaAlpha))
   }

@@ -1,14 +1,17 @@
 package optimizers
 
 import breeze.linalg.{DenseVector, Vector}
-import models.DualModel
+import models.{Regularizer, RealFunction, Loss}
 import vectors.LabelledPoint
 
-trait Optimizer[-ModelType<:DualModel, -DataType, AlphasType, WType] extends Serializable {
+trait Optimizer[-LossType<:Loss[RealFunction,RealFunction], -DataType, AlphasType, WType] extends Serializable {
 
-  def optimize(model: ModelType, data: DataType, alpha: AlphasType, w: WType, epsilon: Double = 0.0): (AlphasType,WType)
+  def optimize(loss: LossType, reg: Regularizer, n: Long,
+               data: DataType, alpha: AlphasType, w: WType, epsilon: Double = 0.0): (AlphasType,WType)
 }
 
-trait SingleCoordinateOptimizer[-ModelType<:DualModel] extends Optimizer[ModelType, LabelledPoint, Double, Vector[Double]]
+trait SingleCoordinateOptimizer[-LossType<:Loss[RealFunction,RealFunction]]
+  extends Optimizer[LossType, LabelledPoint, Double, Vector[Double]]
 
-trait LocalOptimizer[-ModelType<:DualModel] extends Optimizer[ModelType, Array[LabelledPoint], DenseVector[Double], DenseVector[Double]]
+trait LocalOptimizer[-LossType<:Loss[RealFunction,RealFunction]]
+  extends Optimizer[LossType, Array[LabelledPoint], DenseVector[Double], DenseVector[Double]]

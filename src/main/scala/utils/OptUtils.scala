@@ -1,7 +1,7 @@
 package utils
 
 import breeze.linalg.{DenseVector, Vector}
-import models.{DualModel, Model}
+import models.{Regularizer, Loss, RealFunction}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
@@ -13,38 +13,39 @@ object OptUtils {
   /*
     Compute average loss for the loss function defined in the model given a w vector
    */
-  def computeAvgLoss(data: RDD[Array[LabelledPoint]], model: Model, w: Vector[Double]) : Double = {
-    val n = data.map(_.size).reduce(_ + _)
-    data.map(_.map(x => model.primalLoss(x.label, x.features dot w)).sum).reduce(_+_) / n
+  def computeAvgLoss(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction], n: Long, w: Vector[Double]) = {
+    data.map(_.map(x => loss(x.label)(x.features dot w)).sum).reduce(_+_) / n
   }
 
-  def computeDualityGap(data: RDD[Array[LabelledPoint]], model: DualModel, v: Vector[Double], alpha: RDD[Double]): Double = {
-    computePrimalObjective(data, model, model.regularizer.dualGradient(v)) -
-      computeDualObjective(data, model, v, alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray))))
+  def computeDualityGap(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction],
+                        regularizer: Regularizer, n: Long, v: Vector[Double], alpha: RDD[Double]) = {
+    computePrimalObjective(data, loss, regularizer, n, regularizer.dualGradient(v)) -
+      computeDualObjective(data, loss, regularizer, n, v, alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray))))
   }
 
   /*
     Compute primal objective for the loss function defined in the model and a L2 norm regularizer
    */
-  def computePrimalObjective(data: RDD[Array[LabelledPoint]], model: Model, w: Vector[Double]): Double = {
-    computeAvgLoss(data, model, w) + (model.regularizer.primal(w) * model.regularizer.lambda)
+  def computePrimalObjective(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction],
+                             regularizer: Regularizer, n: Long, w: Vector[Double]) = {
+    computeAvgLoss(data, loss, n, w) + regularizer.primal(w) * regularizer.lambda
   }
 
   /*
     Compute dual objective value for the dual loss function defined in the model and a L2 norm regularizer
    */
-  def computeDualObjective(data: RDD[Array[LabelledPoint]], model: DualModel, v: Vector[Double], alpha: RDD[DenseVector[Double]]) : Double = {
-
-    val n = data.map(_.size).reduce(_+_)
+  def computeDualObjective(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction],
+                           regularizer: Regularizer, n: Long,
+                           v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
 
     val lossTerm = (alpha zip data)
       .map(x => x._1.data zip x._2.map(_.label))
-      .map(_.map(p => -model.dualLoss(p._2,-p._1)).sum)
+      .map(_.map(p => -loss.conjugate(p._2)(-p._1)).sum)
       .reduce(_+_) / n
 
-    val regularizer = -model.regularizer.dual(v) * model.regularizer.lambda
+    val regTerm = -regularizer.dual(v) * regularizer.lambda
 
-    lossTerm + regularizer
+    lossTerm + regTerm
   }
 
   /*
@@ -65,11 +66,13 @@ object OptUtils {
     Prints primal and dual objective values and the corresponding duality gap
    */
   def printSummaryStatsPrimalDual(
-    algName: String, data: RDD[Array[LabelledPoint]], model: DualModel, v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
+    algName: String, data: RDD[Array[LabelledPoint]], model: Loss[RealFunction,RealFunction],
+    regularizer: Regularizer, n: Long,
+    v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
 
-    val w = model.regularizer.dualGradient(v)
-    val objVal = computePrimalObjective(data, model, w)
-    val dualObjVal = computeDualObjective(data, model, v, alpha)
+    val w = regularizer.dualGradient(v)
+    val objVal = computePrimalObjective(data, model, regularizer, n, w)
+    val dualObjVal = computeDualObjective(data, model, regularizer, n, v, alpha)
     val dualityGap = objVal - dualObjVal
 
     println(
@@ -82,8 +85,9 @@ object OptUtils {
     dualityGap
   }
 
-  def validateSolution(data: RDD[Array[LabelledPoint]], v: Vector[Double], alpha: RDD[DenseVector[Double]], model: DualModel): Unit = {
-    val (lambda,n) = (model.regularizer.lambda,model.n)
+  def validateSolution(data: RDD[Array[LabelledPoint]], v: Vector[Double], alpha: RDD[DenseVector[Double]],
+                       loss: Loss[RealFunction,RealFunction], regularizer: Regularizer, n: Long){
+    val lambda = regularizer.lambda
 
     val asdf = (data zip alpha).flatMap(x => (x._1 zip x._2.data)
       .map { case (LabelledPoint(_,x),a) =>  x * (a/(lambda*n))}).reduce(_+_)
@@ -93,10 +97,12 @@ object OptUtils {
   /*
     Prints the primal objective value
    */
-  def printSummaryStats(algName: String, model: Model, data: RDD[Array[LabelledPoint]], v: Vector[Double]) =  {
+  def printSummaryStats(algName: String, loss: Loss[RealFunction,RealFunction],
+                        regularizer: Regularizer, n: Long,
+                        data: RDD[Array[LabelledPoint]], v: Vector[Double]) =  {
 
-    val w = model.regularizer.dualGradient(v)
-    val objVal = computePrimalObjective(data, model, w)
+    val w = regularizer.dualGradient(v)
+    val objVal = computePrimalObjective(data, loss, regularizer, n, w)
 
     println(
       algName +
@@ -104,9 +110,11 @@ object OptUtils {
     )
   }
 
-  def printSummaryStatsFromW(algName: String, model: Model, data: RDD[Array[LabelledPoint]], w: Vector[Double]) =  {
+  def printSummaryStatsFromW(algName: String, loss: Loss[RealFunction,RealFunction],
+                             regularizer: Regularizer, n: Long,
+                             data: RDD[Array[LabelledPoint]], w: Vector[Double]) =  {
 
-    val objVal = computePrimalObjective(data, model, w)
+    val objVal = computePrimalObjective(data, loss, regularizer, n, w)
 
     println(
       algName +

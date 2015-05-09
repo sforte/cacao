@@ -1,9 +1,10 @@
 package distopt
 
-import models.regularizer.L1Regularizer
+import models.loss.LogisticLoss
+import models.regularizer.{L2Regularizer, L1Regularizer}
 import optimizers.coordinate.BrentMethodOptimizerWithFirstDerivative
 import optimizers.local.SDCAOptimizer
-import optimizers.distributed.{MllibLogisticWithL1, AccCoCoA}
+import optimizers.distributed.{MllibLogisticWithL1, AccCoCoA, CoCoA}
 import models._
 import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionWithSGD, SVMModel}
 import org.apache.spark.mllib.feature.Normalizer
@@ -62,23 +63,18 @@ object driver {
     val data = OptUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
     val n = data.count()
 
-//    val model = new LogisticRegressionModel(n, new L2Regularizer(lambda))
-    val model = new LogisticRegressionModel(n, new L1Regularizer(lambda, 0.01))
-//    val model = new SVMClassificationModel(n, new L2Regularizer(lambda))
-//    val model = new SVMClassificationModel(n, new L1Regularizer(lambda, epsilon = 0.0001))
-//    val model = new RidgeRegressionModel(n, new L2Regularizer(lambda))
-//    val model = new RidgeRegressionModel(n, new L1Regularizer(lambda, epsilon = 0.0001))
+    val loss = new LogisticLoss
+//    val regularizer = new L1Regularizer(lambda, 0.01)
+    val regularizer = new L2Regularizer(lambda)
 
-//    val scOptimizer = new SVMOptimizer
     val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
-//    val scOptimizer = new RidgeOptimizer
-//    val scOptimizer = new PrimalOptimizer(sgdIterations*10)
+
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
-//    CoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
-    AccCoCoA.runCoCoA(sc, data, model, localSolver, numRounds, beta, seed)
+    CoCoA.runCoCoA(sc, data, loss, regularizer, n, localSolver, numRounds, beta, seed)
+//    AccCoCoA.runCoCoA(sc, data, loss, regularizer, n, localSolver, numRounds, beta, seed)
 
-    MllibLogisticWithL1.run(data, lambda, model, 100000)
+    MllibLogisticWithL1.run(data, loss, regularizer, n, 100000)
 
     sc.stop()
    }
