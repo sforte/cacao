@@ -1,10 +1,11 @@
 package distopt
 
+import breeze.linalg.DenseVector
 import models.loss.LogisticLoss
-import models.regularizer.{L2Regularizer, L1Regularizer}
+import models.regularizer.{ElasticNet, L2Regularizer, L1Regularizer}
 import optimizers.coordinate.BrentMethodOptimizerWithFirstDerivative
 import optimizers.local.SDCAOptimizer
-import optimizers.distributed.{MllibLogisticWithL1, AccCoCoA, CoCoA}
+import optimizers.distributed._
 import models._
 import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionWithSGD, SVMModel}
 import org.apache.spark.mllib.feature.Normalizer
@@ -63,16 +64,30 @@ object driver {
     val data = OptUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
     val n = data.count()
 
+    val partData = data.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true)
+    val partAlphas = data.map(_ => 0.0)
+      .mapPartitions(x=>Iterator(new DenseVector(x.toArray)), preservesPartitioning = true)
+
+    val v = DenseVector.zeros[Double](numFeatures)
+
+//    AccCoCoAForL1.optimize(sc, n, lambda, data)
+//    return
+
     val loss = new LogisticLoss
 //    val regularizer = new L1Regularizer(lambda, 0.01)
-    val regularizer = new L2Regularizer(lambda)
+//    val regularizer = new L2Regularizer(lambda)
+    val regularizer = new ElasticNet(lambda, 0.001)
+    println(regularizer)
 
     val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
 
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
-    CoCoA.runCoCoA(sc, data, loss, regularizer, n, localSolver, numRounds, beta, seed)
-//    AccCoCoA.runCoCoA(sc, data, loss, regularizer, n, localSolver, numRounds, beta, seed)
+    val cocoa = new CoCoA(sc, localSolver, numRounds, beta, seed)
+    val acccocoa = new AccCoCoA(sc, cocoa, seed)
+
+//    cocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
+    acccocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
 
     MllibLogisticWithL1.run(data, loss, regularizer, n, 100000)
 

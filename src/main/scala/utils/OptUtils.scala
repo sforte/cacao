@@ -13,7 +13,7 @@ object OptUtils {
   /*
     Compute average loss for the loss function defined in the model given a w vector
    */
-  def computeAvgLoss(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction], n: Long, w: Vector[Double]) = {
+  def computeAvgLoss(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,_], n: Long, w: Vector[Double]) = {
     data.map(_.map(x => loss(x.label)(x.features dot w)).sum).reduce(_+_) / n
   }
 
@@ -26,7 +26,7 @@ object OptUtils {
   /*
     Compute primal objective for the loss function defined in the model and a L2 norm regularizer
    */
-  def computePrimalObjective(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction],
+  def computePrimalObjective(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,_],
                              regularizer: Regularizer, n: Long, w: Vector[Double]) = {
     computeAvgLoss(data, loss, n, w) + regularizer.primal(w) * regularizer.lambda
   }
@@ -34,7 +34,7 @@ object OptUtils {
   /*
     Compute dual objective value for the dual loss function defined in the model and a L2 norm regularizer
    */
-  def computeDualObjective(data: RDD[Array[LabelledPoint]], loss: Loss[RealFunction,RealFunction],
+  def computeDualObjective(data: RDD[Array[LabelledPoint]], loss: Loss[_,RealFunction],
                            regularizer: Regularizer, n: Long,
                            v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
 

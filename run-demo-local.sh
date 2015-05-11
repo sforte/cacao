@@ -2,10 +2,10 @@
 --trainFile=data/trainset.dat \
 --testFile=data/regr_test.dat \
 --numFeatures=100000 \
---numRounds=100 \
---numPasses=1 \
---numSplits=1 \
---lambda=0.001 \
+--numRounds=1000 \
+--numPasses=10 \
+--numSplits=8 \
+--lambda=0.0001 \
 --justCoCoA=true \
 --beta=1.0 \
 --sgdIterations=100

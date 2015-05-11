@@ -44,38 +44,16 @@ class SDCAOptimizer [-LossType<:Loss[RealFunction,RealFunction]]
 
         val pt = localData(idx)
 
-        val (scDeltaAlpha, scDeltaV) = scOptimizer.optimize(model, regularizer, n, pt, alpha(idx), v)
+        val (scDeltaAlpha, scDeltaV) =
+          scOptimizer.optimize(model, regularizer, n, pt, alpha(idx), v)
 
         v += scDeltaV
         alpha(idx) += scDeltaAlpha
       }
     }
 
-//    benchmark.time("passcode wild") {
-//      (1 to 8).par.map { _ =>
-//
-//        val randperm = util.Random.shuffle(1 to nLocal)
-//
-//        for (pass <- 1 to numPasses) {
-//
-//          for (i <- randperm; idx = i - 1) {
-//            val pt = localData(idx)
-//            val a = alpha(idx)
-//
-//            val (scDeltaAlpha, scDeltaV) = scOptimizer.optimize(model, pt, a, v)
-//
-//            alpha(idx) += scDeltaAlpha
-//            v += scDeltaV
-//          }
-//        }
-//      }
-//    }
-
     val deltaAlpha = alpha - alphaOld
     val deltaV = v - vOld
-//    val deltaV = ((alpha.valuesIterator.toArray zip localData).par.map { case (alpha, LabelledPoint(y,x)) =>
-//      x * (alpha / (model.regularizer.lambda*model.n))
-//    }.reduce(_+_) - vOld).asInstanceOf[DenseVector[Double]]
 
     (deltaAlpha, deltaV)
   }

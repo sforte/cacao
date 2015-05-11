@@ -50,4 +50,4 @@ export SPARK_MEM
 
 JAVA_OPTS="$JAVA_OPTS -Xms$SPARK_MEM -Xmx$SPARK_MEM ""$SPARK_JAVA_OPTS"
 
-exec "$RUNNER" -Djava.library.path=$FWDIR/lib -cp "$CLASSPATH" $JAVA_OPTS "$@"
+exec "$RUNNER" -Dsun.io.serialization.extendedDebugInfo=true -Djava.library.path=$FWDIR/lib -cp "$CLASSPATH" $JAVA_OPTS "$@"
