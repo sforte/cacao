@@ -67,6 +67,15 @@ object driver {
 
     val data = OptUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
 
+    /*
+      Here on the dual we are solving:
+        \sum (g_i(..)) + \lambda |w|_1
+        and not:
+        \frac{1}{d} \sum (g_i(..)) + \lambda |w|_1
+        (so in other words the same as in the paper)
+        where g_i is either the l2 loss or the logistic
+        (you have to choose the right one inside the L1 class.
+     */
     L1.optimize(sc, data, lambda)
 
     return
