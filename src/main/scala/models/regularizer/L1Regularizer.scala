@@ -20,7 +20,7 @@ class L1Regularizer(sigma: Double, epsilon: Double) extends Regularizer {
   def primal(w: Vector[Double]) = 1.0/2*l2norm(w) + p*l1norm(w)
 
   def dualGradient(v: Vector[Double]) = {
-    new LazyMappedVector(v, x => if (abs(x) > p) x - p*signum(x) else 0.0)
+    new LazyMappedVector(v, {case(i,x) => if (abs(x) > p) x - p*signum(x) else 0.0})
   }
 
   override def toString = s"${0.5*lambda} |w|^2_2 + $sigma |w|_1"

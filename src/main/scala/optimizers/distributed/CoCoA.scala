@@ -34,10 +34,10 @@ class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
     println(Calendar.getInstance.getTime)
 
     var t = 1
-    var gap = computePrimalObjective(data, loss, regularizer, n, regularizer.dualGradient(v))
-              - computeDualObjective(data, loss, regularizer, n, v, alpha)
+    var gap = (computePrimalObjective(data, loss, regularizer, n, regularizer.dualGradient(v))
+                 - computeDualObjective(data, loss, regularizer, n, v, alpha))
 
-    while (t <= numRounds && gap > epsilon) {
+    while (t <= numRounds /*&& gap > epsilon*/) {
       val vv = sc.broadcast(v)
 
       val updates = (alpha zip data).mapPartitions(
@@ -55,6 +55,8 @@ class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
       }
 
       t += 1
+
+//      if (t % 100 == 0) alpha.checkpoint()
     }
 
     println(Calendar.getInstance.getTime)

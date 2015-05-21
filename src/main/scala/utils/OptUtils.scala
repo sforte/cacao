@@ -128,10 +128,10 @@ object OptUtils {
   }
 
   def time(label: String) (func: => Unit) = {
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime()
     func
-    val end = System.currentTimeMillis()
-    println(s"$label: ${(end-start)/1000.0}")
+    val end = System.nanoTime()
+    println(s"$label: ${(end-start)/1000000000.0}")
   }
 
   def loadData(numFeatures: Int, file: String) = {

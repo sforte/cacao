@@ -2,7 +2,7 @@ package test
 
 import org.apache.commons.math3.analysis.UnivariateFunction
 import org.apache.commons.math3.analysis.differentiation.{DerivativeStructure, FiniteDifferencesDifferentiator}
-import models.loss.LogisticLossConjugate
+import models.loss.LogisticLoss
 import models.{DoublyDifferentiableRealFunction, RealFunction, DifferentiableRealFunction, Loss}
 
 /**
@@ -10,7 +10,7 @@ import models.{DoublyDifferentiableRealFunction, RealFunction, DifferentiableRea
 */
 object DerivativeTest extends App {
 
-  assert(testForAll(new LogisticLossConjugate, Array(-1.0,1.0)))
+  assert(testForAll(new LogisticLoss().conjugate, Array(-1.0,1.0)))
 
   def testForAll(loss: Loss[DifferentiableRealFunction,RealFunction], iter: Iterable[Double]) = {
     iter.forall(y => testDerivative(loss.apply(y), 0.01))

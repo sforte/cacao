@@ -3,9 +3,9 @@
 --testFile=data/regr_test.dat \
 --numFeatures=100000 \
 --numRounds=1000 \
---numPasses=10 \
---numSplits=8 \
---lambda=0.0001 \
+--numPasses=1 \
+--numSplits=1 \
+--lambda=10.0 \
 --justCoCoA=true \
 --beta=1.0 \
 --sgdIterations=100

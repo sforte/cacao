@@ -7,7 +7,7 @@ abstract class LazyVector extends Vector[Double] with Serializable {
   final override def update(i: Int, v: Double) = ???
 }
 
-class LazyMappedVector (vec: Vector[Double], func: (Double => Double)) extends LazyVector {
+class LazyMappedVector (vec: Vector[Double], func: (((Int,Double)) => Double)) extends LazyVector {
 
   override def length: Int = vec.length
 
@@ -15,18 +15,18 @@ class LazyMappedVector (vec: Vector[Double], func: (Double => Double)) extends L
 
   override def activeSize: Int = vec.activeSize
 
-  override def apply(i: Int) = func(vec(i))
+  override def apply(i: Int) = func(i,vec(i))
 
   override def activeIterator = activeKeysIterator zip activeValuesIterator
 
   override def activeKeysIterator = vec.activeKeysIterator
 
-  override def activeValuesIterator = vec.activeValuesIterator.map(func)
+  override def activeValuesIterator = (vec.activeKeysIterator zip vec.activeValuesIterator).map(func)
 
   override def repr = this
 }
 
-class LazyScaledVector (vec: Vector[Double], s: Double) extends LazyMappedVector(vec, _*s)
+class LazyScaledVector (vec: Vector[Double], s: Double) extends LazyMappedVector(vec, _._2*s)
 
 class LazySumVector (a: DenseVector[Double], b: DenseVector[Double], s: Double) extends LazyVector {
 

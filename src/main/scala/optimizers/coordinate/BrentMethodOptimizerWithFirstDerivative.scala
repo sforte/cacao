@@ -42,12 +42,15 @@ class BrentMethodOptimizerWithFirstDerivative
 
     val brent = new BrentSolver
     brent.setMaximalIterationCount(numIter)
-    brent.setRelativeAccuracy(0)
-    brent.setAbsoluteAccuracy(4*Math.ulp(1d))
+    brent.setAbsoluteAccuracy(4*math.ulp(1d))
 
     // the domain on which we optimize is determined by the domain of the conjugate loss function
     val domain = (-dualLossDer.domain._2, -dualLossDer.domain._1)
-    val alphaNew = brent.solve(func, domain._1, domain._2, alpha)
+
+    val alphaNew = if(math.abs(domain._1-domain._2) <= 10*math.ulp(1d))
+      alpha
+    else
+      brent.solve(func, domain._1, domain._2, alpha)
 
     val deltaAlpha = alphaNew - alpha
 

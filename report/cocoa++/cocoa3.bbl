@@ -1,0 +1,28 @@
+\begin{thebibliography}{3}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Jaggi et~al.(2014)Jaggi, Smith, Tak{\'a}\v{c}, Terhorst, Krishnan,
+  Hofmann, and Jordan]{jaggi2014communication}
+Jaggi, M., Smith, V., Tak{\'a}\v{c}, M., Terhorst, J., Krishnan, S., Hofmann,
+  T., and Jordan, M.~I.
+\newblock Communication-efficient distributed dual coordinate ascent.
+\newblock In \emph{NIPS}, 2014.
+
+\bibitem[Richt{\'a}rik \& Tak{\'a}{\v{c}}(2013)Richt{\'a}rik and
+  Tak{\'a}{\v{c}}]{richtarik2013distributed}
+Richt{\'a}rik, P. and Tak{\'a}{\v{c}}, M.
+\newblock Distributed coordinate descent method for learning with big data.
+\newblock \emph{arXiv preprint arXiv:1310.2059}, 2013.
+
+\bibitem[Shalev-Shwartz \& Zhang(2013)Shalev-Shwartz and
+  Zhang]{ShalevShwartz:2013wl}
+Shalev-Shwartz, S. and Zhang, T.
+\newblock {Stochastic Dual Coordinate Ascent Methods for Regularized Loss
+  Minimization}.
+\newblock \emph{JMLR}, 14:\penalty0 567--599, February 2013.
+
+\end{thebibliography}

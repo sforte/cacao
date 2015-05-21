@@ -1,12 +1,16 @@
 package distopt
 
 import breeze.linalg.DenseVector
+import breeze.numerics.{abs, pow}
 import models.loss.LogisticLoss
-import models.regularizer.{ElasticNet, L2Regularizer, L1Regularizer}
-import optimizers.coordinate.BrentMethodOptimizerWithFirstDerivative
+import models.regularizer. ElasticNet
+import optimizers.coordinate.{BrentMethodOptimizer, BrentMethodOptimizerWithFirstDerivative}
 import optimizers.local.SDCAOptimizer
 import optimizers.distributed._
 import models._
+import org.apache.commons.math.analysis.UnivariateRealFunction
+import org.apache.commons.math.optimization.GoalType
+import org.apache.commons.math.optimization.univariate.BrentOptimizer
 import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionWithSGD, SVMModel}
 import org.apache.spark.mllib.feature.Normalizer
 import org.apache.spark.mllib.linalg.Vectors
@@ -62,6 +66,11 @@ object driver {
     val sc = new SparkContext(conf)
 
     val data = OptUtils.loadLibSVMFile(sc, trainFile, numFeatures, numSplits).repartition(numSplits)
+
+    L1.optimize(sc, data, lambda)
+
+    return
+
     val n = data.count()
 
     val partData = data.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true)
@@ -70,24 +79,20 @@ object driver {
 
     val v = DenseVector.zeros[Double](numFeatures)
 
-//    AccCoCoAForL1.optimize(sc, n, lambda, data)
-//    return
-
     val loss = new LogisticLoss
 //    val regularizer = new L1Regularizer(lambda, 0.01)
-//    val regularizer = new L2Regularizer(lambda)
     val regularizer = new ElasticNet(lambda, 0.001)
     println(regularizer)
 
-    val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
+//    val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
 
+    val scOptimizer = new BrentMethodOptimizer(sgdIterations*10)
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
     val cocoa = new CoCoA(sc, localSolver, numRounds, beta, seed)
-    val acccocoa = new AccCoCoA(sc, cocoa, seed)
 
-//    cocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
-    acccocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
+    cocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
+//    acccocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
 
     MllibLogisticWithL1.run(data, loss, regularizer, n, 100000)
 

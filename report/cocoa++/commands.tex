@@ -1,0 +1,135 @@
+\usepackage{subfig}
+\usepackage{tikz}
+\usepackage{amsmath,hyperref}
+\usepackage{pdflscape}
+\usepackage{verbatim}
+
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+%\SetAlgorithmName{Algorithm Schema}{\autoref}{List of Algorithms}
+
+\SetKwFor{ParallelForEach}{for each}{in parallel do}{endfor}
+
+\newcommand{\TT}[0]{{\tau}}
+\newcommand{\K}[0]{{\mathcal C}}
+
+\newcommand{\Kidx}[0]{c}
+
+\newcommand{\TP}[0]{{\mathcal P}}
+\newcommand{\JJ}[0]{ D_i }
+\newcommand{\GG}[0]{ D }
+
+
+\DeclareMathOperator*{\proj}{proj}
+\DeclareMathOperator*{\dom}{dom}
+\DeclareMathOperator*{\diag}{diag}
+\DeclareMathOperator*{\Diag}{Diag}
+
+\DeclareMathOperator*{\mysgn}{sgn}
+
+\DeclareMathOperator*{\successor}{succ}
+\DeclareMathOperator*{\predecessor}{pred}
+
+\DeclareMathOperator*{\rroot}{root}
+\DeclareMathOperator*{\rung}{rung}
+
+\newcommand{\sets}[1]{\la #1 \ra}
+\newcommand{\sgn}{sgn}
+
+
+\newcommand{\note}[1]{{\color{red} #1}}
+\newcommand{\error}[1]{{\tiny \color{red} #1}}
+
+\newcommand{\vsubset}[2]{#1_{[#2]}}
+
+
+\newcommand{\f}{f}
+\newcommand{\YY}{\varphi}
+ 
+\newcommand{\sK}{\mathcal{K}}
+%\newcommand{\J}{J}
+\newcommand{\sJ}{\mathcal{J}}
+
+
+%\newcommand{\del}[1]{{\color{red} #1}}
+%FIXME \usepackage{perpage}
+\newcommand{\mycomment}[1]{\footnote{#1}}
+
+\let\la=\langle
+\let\ra=\rangle
+
+\newcommand{\st}{\;:\;}
+\newcommand{\ve}[2]{\langle #1 ,  #2 \rangle}
+
+%\newcommand{\eqdef}{\stackrel{\text{def}}{=}}
+\newcommand{\eqdef}{:=}
+
+\newcommand{\ii}{{}^{(i)}}
+
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\integers}{\mathbf{N}}
+\newcommand{\Prob}{\mathbf{Prob}}
+\newcommand{\E}{\mathbf{E}}
+
+
+\newcommand{\pc}[2]{#1^{[#2]}}
+
+\newcommand{\vc}[2]{#1^{\la #2 \ra}}
+\newcommand{\bvc}[2]{#1^{(#2)}}
+\newcommand{\vt}[2]{#1_{#2}}
+\newcommand{\vct}[3]{#1^{#2}_{#3}}
+\newcommand{\vPCc}[3]{#1^{\{#3\} : #2}}
+\newcommand{\vPCt}[3]{#1^{#2}_{#3}}
+\newcommand{\vPC}[2]{#1^{#2}}
+
+\newcommand{\mrow}[2]{#1_{{#2}{:}}}
+\newcommand{\mcol}[2]{#1_{{:}{#2}}}
+\newcommand{\mel}[3]{#1_{{#2},{#3}}}
+
+\newcommand{\Sj}[0]{{\hat Z}^{c}}
+
+
+\newcommand{\G}[2]{#1^{(#2)}}
+\newcommand{\dG}[2]{#1^{(#2)}}
+
+\newcommand{\nc}[2]{{\color{red}\|#1\|_{(#2)}}}
+\newcommand{\ncs}[2]{\|#1\|^2_{(#2)}}
+\newcommand{\ncc}[2]{{\color{red}\|#1\|^*_{(#2)}}}
+\newcommand{\ls}[1]{{\color{red} \mathcal S(#1)}}
+\newcommand{\Rw}[2]{\mathcal R_{#1}(#2)}
+\newcommand{\Rws}[2]{\mathcal R^2_{#1}(#2)}
+
+\newcommand{\Rel}[2]{\mathcal {R}_{#1}^{#2}}
+
+
+\newcommand{\nbp}[2]{\|#1\|_{(#2)}}   % norm block primal
+\newcommand{\nbd}[2]{\|#1\|_{(#2)}^*} % norm block dual
+
+\newcommand{\lf}{\mathcal L}
+\newcommand{\U}{U}
+\newcommand{\N}{N}
+
+\newcommand{\mLi}{{\color{red}m^{(i)}}}
+\newcommand{\gLi}{{\color{red}g^{(i)}}}
+%\newcommand{\TLi}{{\color{red}T_L^{(i)}}}
+\newcommand{\TLi}[1]{{\color{blue}T^{(#1)}}}
+\newcommand{\TL}{{\color{blue}T}}
+
+\newcommand{\support}{{\color{blue}support}}
+
+
+\newcommand{\Lip}{L}
+\newcommand{\ALip}{\tilde L}
+
+\newcommand{\Rc}[1]{{\color{red}  \mathbf{RC}_{(#1)}}}
+\newcommand{\NRCDM}{{\color{red}NRCDM}\  }
+\newcommand{\nnz}[1]{\|#1\|_0}
+% sets
+
+\newtheorem{assumption}{Assumption}
+
+
+\newcommand{\cBroadcast}{c_1}
+\newcommand{\cNeighboursNo}{k_2}
+\newcommand{\cNeighboursTime}{c_2}
+\newcommand{\cPointToPoint}{c_3}

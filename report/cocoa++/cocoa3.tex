@@ -1,0 +1,3015 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% ICML 2015 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Use the following line _only_ if you're still using LaTeX 2.09.
+%\documentstyle[icml2015,epsf,natbib]{article}
+% If you rely on Latex2e packages, like most moden people use this:
+\documentclass{article}
+
+
+\usepackage{verbatim}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% Packages %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% use Times
+\usepackage{times}
+% For figures
+\usepackage{graphicx} % more modern
+%\usepackage{epsfig} % less modern
+%\usepackage[caption=false]{subfig} 
+\usepackage{subfigure}
+%\usepackage{caption}
+%\usepackage{subcaption}
+% For citations
+\usepackage{natbib}
+%\usepackage{float}
+
+% For algorithms
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% others
+\usepackage{latexsym, amsmath,amssymb, amsthm}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{multicol}
+\usepackage{xspace}
+\usepackage[colorinlistoftodos,bordercolor=orange,backgroundcolor=orange!20,linecolor=orange,textsize=scriptsize]{todonotes}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+% As of 2011, we use the hyperref package to produce hyperlinks in the
+% resulting PDF.  If this breaks your system, please commend out the
+% following usepackage line and replace \usepackage{icml2015} with
+% \usepackage[nohyperref]{icml2015} above.
+ \usepackage{hyperref}
+
+% Packages hyperref and algorithmic misbehave sometimes.  We can fix
+% this with the following command.
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+% Employ the following version of the ``usepackage'' statement for
+% submitting the draft version of the paper for review.  This will set
+% the note in the first column to ``Under review.  Do not distribute.''
+\usepackage[accepted]{icml2015} 
+
+% Employ this version of the ``usepackage'' statement after the paper has
+% been accepted, when creating the final version.  This will set the
+% note in the first column to ``Proceedings of the...''
+%\usepackage[accepted]{icml2015}
+
+
+% The \icmltitle you define below is probably too long as a header.
+% Therefore, a short form for the running title is supplied here:
+\icmltitlerunning{%\cocoa\!\!+ - 
+Adding vs. Averaging in Distributed Primal-Dual Optimization
+%Additive Aggregation in Distributed Primal-Dual Optimization
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\graphicspath{ {./}{./figs/} }
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% Commands %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\comment}[1]{}
+\newcommand{\newstuff}[1]{{\color{red}#1}}
+\newcommand{\cocoa}{\textsc{CoCoA}\xspace} 
+\newcommand{\cocoap}{\textsc{CoCoA$\!^{\bf \textbf{\footnotesize+}}$}\xspace}
+\newcommand{\localalgname}{\textsc{LocalSolver}\xspace}
+\newcommand{\localSDCA}{\textsc{LocalSDCA}\xspace}
+\newcommand{\setn}{[n]}
+\newcommand{\Exp}{\mathbb{E}}                      % expectation
+\newcommand\tagthis{\addtocounter{equation}{1}\tag{\theequation}}
+
+\DeclareMathOperator{\Rand}{Rand}
+\DeclareMathOperator{\support}{support}
+\DeclareMathOperator{\Diag}{Diag}
+\DeclareMathOperator{\diam}{diam}
+\DeclareMathOperator{\dom}{dom}         % domain
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\del}[1]{{\color{red}#1}}            % comment
+\newcommand{\st}{\;:\;}                          % such that
+\newcommand{\ve}[2]{\left\langle #1 ,  #2 \right\rangle}    % inner product
+\newcommand{\eqdef}{:=}
+\newcommand{\R}{\mathbb{R}}                      % set of real numbers
+\newcommand{\Prob}{\mathbb{P}}                   % probability
+\newcommand{\E}{\mathbb{E}}                      % expectation
+\newcommand{\N}{n}                               % dimension of the problem =N; there will be n<=N blocks
+\newcommand{\U}{U}
+\newcommand{\C}{C}
+
+\newcommand{\diag}{\mathbf{diag}}
+\newcommand{\Var}{\mathbf{Var}}                    
+\newcommand{\hatZ}{\hat Z}
+\newcommand{\hatS}{\hat S}
+\newcommand{\calG}{G}
+\newcommand{\calT}{\mathcal{T}}
+\newcommand{\calF}{\mathcal{F}}
+\newcommand{\Lip}{\mathcal{L}}
+\newcommand{\calH}{\mathcal{H}_\beta}
+\newcommand{\calHMINI}{\mathcal{C}}
+
+\newcommand{\calS}{\mathcal{S}}
+\newcommand{\calJ}{\mathcal{J}}
+\newcommand{\xv}{ {\bf x}}
+\newcommand{\yv}{ {\bf y}}
+\newcommand{\zv}{ {\bf z}}
+\newcommand{\uv}{ {\bf u}}
+\newcommand{\vv}{ {\bf v}}
+\newcommand{\wv}{ {\bf w}}
+\newcommand{\alphav}{ {\boldsymbol \alpha}}
+\newcommand{\zetav}{ {\boldsymbol \zeta}}
+\newcommand{\bv}{ {\bf b}}
+\newcommand{\ev}{ {\bf e}}
+\newcommand{\V}{ {\bf v}}
+\newcommand{\T}{ {\bf T}}
+\newcommand{\X}{ {\bf X}}
+\newcommand{\Q}{ {\bf Q}}
+\newcommand{\0}{ {\bf 0}}
+
+\newcommand{\f}{f}
+\newcommand{\YY}{\varphi}
+\newcommand{\K}{K}
+\newcommand{\sK}{\mathcal{K}}
+\newcommand{\J}{J}
+\newcommand{\sJ}{\mathcal{J}}
+
+\newcommand{\calO}{\mathcal{O}}
+\newcommand{\vsubset}[2]{#1_{[#2]}}
+\newcommand{\Srv}{\hat{S}}
+\newcommand{\oo}{|J \cap \Srv_j|}
+
+\newcommand{\vc}[2]{#1^{(#2)}}                   % coordinate of a vector
+\newcommand{\cor}[2]{{{#1}_{#2}}}                   % coordinate of a vector
+\newcommand{\corit}[3]{{#1}_{#2}^{(#3)}}                   % coordinate of a vector
+\newcommand{\ncs}[2]{\|#1\|^2_{(#2)}}
+\newcommand{\nbp}[2]{\|#1\|_{(#2)}}              % norm block primal
+\newcommand{\nbd}[2]{\|#1\|_{(#2)}^*}            % norm block dual
+\newcommand{\Rw}[2]{\mathcal R_{#1}(#2)}
+\newcommand{\Rws}[2]{\mathcal R^2_{#1}(#2)}
+\DeclareMathOperator{\trace}{trace}           % trace
+\DeclareMathOperator{\card}{Card}           % Cardinality
+\newcommand{\note}[1]{{ \color{red} #1 }}
+
+\newcommand{\bb} {\bf{b}}
+\newcommand{\pnote}[1]{{  \color{red} [[ #1 -- Peter ]] }}
+\newcommand{\natinote}[1]{{  \color{blue} [[ #1 -- Nati ]] }}
+\newcommand{\takinote}[1]{{  \color{yellow} [[ #1 -- Martin ]] }}
+\newcommand{\avnote}[1]{{  \color{green} [[ #1 -- Avleen ]] }}
+\newcommand{\removed}[1]{}
+\newcommand{\norm}[1]{\left\lVert{#1}\right\rVert}
+\newcommand{\hingeloss}{\ell}
+\newcommand{\hinge}[1]{\hingeloss ( #1 )}
+\newcommand{\trans}{{\top}}
+\newcommand{\calA}{\mathcal{A}}
+\newcommand{\bP}{\mathcal{P}}
+\newcommand{\bD}{\mathcal{D}}
+\newcommand{\bH}{\mathcal{H}}
+\newcommand{\sizeJ}{\omega}
+\newcommand{\Ggk}{\mathcal{G}^{\sigma'}_k\hspace{-0.08em}}
+
+\newcolumntype{R}[2]{%
+    >{\adjustbox{angle=#1,lap=\width-(#2)}\bgroup}%
+    l%
+    <{\egroup}%
+}
+\newcommand*\rot{\rotatebox{90}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+%\newtheorem{proposition}{Proposition}
+\newtheorem{example}{Example}
+%\newtheorem{assumption}{Assumption}[section]
+\newtheorem{assumption}{Assumption}
+%\newtheorem{prop}[theorem]{Proposition}
+ \newtheorem{conjecture}[theorem]{Conjecture}
+%\newtheorem{lem}[theorem]{Lemma}
+%\newtheorem{claim}[theorem]{Claim}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+%\newtheorem{exercise}[theorem]{Exercise}
+%\newtheorem{rem}[theorem]{Remark}
+%\newtheorem{que}[theorem]{Question}
+\newtheorem{definition}[theorem]{Definition}
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+
+\begin{document} 
+
+\twocolumn[
+\icmltitle{%\cocoap - 
+Lasso
+%Additive Aggregation in Distributed Primal-Dual Optimization
+%\cocoap - Distributed Additive Primal-Dual Optimization
+}
+
+% It is OKAY to include author information, even for blind
+% submissions: the style file will automatically remove it for you
+% unless you've provided the [accepted] option to the icml2015
+% package. 
+
+%\icmlauthor{Chenxin  Ma$^*$}{chm514@lehigh.edu}
+%\icmladdress{Industrial and Systems Engineering, Lehigh University, USA}
+%\icmlauthor{Virginia Smith$^*$}{vsmith@berkeley.edu}
+%\icmladdress{University of California, Berkeley, USA}
+%\icmlauthor{Martin  Jaggi}{jaggi@inf.ethz.ch}
+%\icmladdress{ETH Z\"urich, Switzerland}
+%\icmlauthor{Michael I. Jordan}{jordan@cs.berkeley.edu}
+%\icmladdress{University of California, Berkeley, USA}
+%\icmlauthor{Peter  Richt\'arik}{peter.richtarik@ed.ac.uk}
+%\icmladdress{School of Mathematics, University of Edinburgh, UK}
+%\icmlauthor{Martin  Tak\'a\v{c}}{Takac.MT@gmail.com}
+%\icmladdress{Industrial and Systems Engineering, Lehigh University, USA}
+%$^*$Authors contributed equally.
+
+% You may provide any keywords that you 
+% find helpful for describing your paper; these are used to populate 
+% the "keywords" metadata in the PDF but will not be shown in the document
+\icmlkeywords{optimization algorithms, large-scale machine learning, distributed systems}
+
+\vskip 0.3in
+]
+
+%
+\section{Setup}
+We consider regularized empirical loss minimization problems of the following form:\vspace{-2mm}
+\begin{equation}
+\label{eq:primal}
+ \min_{\wv\in \R^d} 
+ \left\{
+ P(\wv)\eqdef  
+  \frac1{\N} \sum_{i=1}^\N \ell_i( \xv_i^T \wv) + \lambda \bigg(\frac{\|\wv\|^2}{2} + \wv^T\bv\bigg)\right\}
+\end{equation}
+\textcolor{blue}{According to my calculations this should be the correct conjugate of the dual loss we want}
+Here the vectors $\{\xv_i\}_{i=1}^n \subset \R^d$ represent the training data examples, $\bv \in \R^d$ and the
+$\ell_i(.)$ are arbitrary convex real-valued loss functions (e.g., hinge loss), possibly depending on label information
+for the $i$-th datapoints. The constant $\lambda>0$ is the regularization parameter.
+
+\paragraph{Dual Problem, and Primal-Dual Certificates.}
+The conjugate dual of \eqref{eq:primal} takes following form:\vspace{-2mm}
+\begin{equation}
+\label{eq:dual}
+\max_{\alphav \in \R^\N}
+  \left\{
+ \bD(\alphav )\eqdef  
+ -\frac1n \sum_{j=1}^\N \ell_j^*(- \alpha_j)
+ -\frac{\lambda}{2} 
+  \left\|\frac{A \alphav}{\lambda\N} - \bf{b}\right\|^2  \right\}
+\end{equation}
+Here the data matrix $A=[\xv_1, \xv_2, \dots, \xv_n] \in \R^{d\times n}$ collects all data-points as its columns, 
+and $\ell_j^*$ is the conjugate function to $\ell_j$. See, e.g., \cite{ShalevShwartz:2013wl} for several concrete applications.
+
+It is possible to assign for any dual vector $\alphav \in \R^n$ 
+a corresponding primal feasible point
+\begin{equation}
+\label{eq:PDMapping}
+\wv(\alphav)
+ = \tfrac1{\lambda n} A \alphav - \bv
+\end{equation}
+The duality gap function is then given by:
+\begin{align}
+\label{eq:gap}
+G(\alphav)
+ := \bP(\wv(\alphav))-\bD(\alphav)
+\end{align}
+By weak duality, every value $\bD(\alphav)$ at a dual candidate~$\alphav$ provides a lower bound on every primal value $P(\wv)$. The duality gap is therefore a certificate on the approximation quality: The distance to the unknown true optimum $P(\wv^*)$ must always lie within the duality gap, i.e., $G(\alphav) = \bP(\wv)-\bD(\alphav) \ge \bP(\wv) - \bP(\wv^*) \ge 0$.
+
+In large-scale machine learning settings like those considered here, the availability of such a computable measure of approximation quality is a significant benefit during training time. Practitioners using classical primal-only methods such as SGD have no means by which to accurately detect if a model has been well trained, as $P(\wv^*)$ is unknown.
+ 
+ 
+\paragraph{Classes of Loss-Functions.}
+%TODO: following additional assumptions on the loss: check again what exactly we need for which proofs. rather move such stuff into the theorem assumptions
+To simplify presentation, we assume %without loss of generality
+that all loss functions $\ell_i$ are non-negative, and  \vspace{-2mm}
+\begin{equation}
+ \ell_i(0)\leq 1  \qquad \forall i
+\label{eq:afswfevfwaefa}
+\end{equation}
+\begin{definition}[$L$-Lipschitz continuous loss]
+A function $\ell_i: \R \to \R$ is $L$-Lipschitz continuous if $\forall a,b \in \R$, we have
+\begin{equation}
+ | \ell_i(a) - \ell_i(b) | \leq L |a-b|
+\end{equation}
+\end{definition}
+
+%
+\paragraph{Data Partitioning.}
+
+We write $\{\mathcal{P}_k
+\}_{k=1}^K$ for the %not necessarily balanced 
+given partition of the datapoints $[n]\eqdef \{1,2,\dots,n\}$ over the $K$ worker machines.
+We denote the size of each part by $n_k=|\mathcal{P}_k|$.
+For any $k\in[K]$
+and $\alphav\in \R^n$
+we use the notation
+$\vsubset{\alphav}{k}\in \R^n$ for the vector\vspace{-3mm}
+$$
+(\vsubset{\alphav}{k})_i
+ :=
+ \begin{cases}
+ 0,&\mbox{if}\ i\notin \mathcal{P}_k,\\
+ \alpha_i,&\mbox{otherwise.}
+\end{cases}
+$$
+
+\paragraph{Local Subproblems in \cocoap.}
+
+We can define a data-local subproblem of the original dual optimization problem \eqref{eq:dual}, which can be solved on machine $k$ and only requires accessing data which is already available locally, i.e., datapoints with $i\in\mathcal{P}_k$. More formally, each machine $k$ is assigned the following local subproblem, depending only on the change in the local dual variables~$\alpha_i$ with $i\in\mathcal{P}_k$:
+\begin{equation} 
+\max_{\vsubset{\Delta \alphav}{k}\in\R^{n}} \ %TODO: could be interpreted a bit ambiguious, since these vectors live in R^n, but we only care about one coordinate block
+\Ggk(  \vsubset{\Delta \alphav}{k}; \wv)
+\end{equation} 
+where
+\begin{align} 
+&\Ggk(  \vsubset{\Delta \alphav}{k}; \wv)
+\eqdef
+-\frac1n\sum_{i \in \mathcal{P}_k} 
+\ell_i^*(-\alpha_i - (\vsubset{\Delta \alphav}{k})_i)
+\nonumber
+\\
+&\hspace{15mm} 
+- \frac1K 
+\frac{\lambda}{2}
+\|\wv\|^2
+-\frac1n
+\wv^T A \vsubset{\Delta \alphav}{k}
+\nonumber
+\\
+&\hspace{15mm}  
+- \frac\lambda2
+ \sigma'  \Big\|\frac1{\lambda n} A \vsubset{\Delta \alphav}{k}\Big\|^2
+ \label{eq:subproblem}
+\end{align}
+\textcolor{blue}{We are lucky here; this is the same as for CoCoA+.
+When written in terms of $\wv$ the local dual problem should not change!}
+
+\paragraph{Interpretation.}
+The above definition of the local objective functions $\Ggk$ are such that they closely approximate the global dual objective $\bD$, as we vary the `local' variable~$\vsubset{\Delta \alphav}{k}$, in the following precise sense:
+\begin{lemma}
+\label{lem:RelationOfDTOSubproblems}
+For any dual
+$\alphav, \Delta \alphav %\vsubset{\Delta \alphav}{k},\dots, \vsubset{\Delta \alphav}{K}
+\in \R^n$, primal $\wv = \wv(\alphav)$ and real values $\gamma,\sigma'$ satisfying~\eqref{eq:sigmaPrimeSafeDefinition}, it holds that\vspace{-2mm}
+\[
+\bD\Big(
+\alphav +\gamma 
+\sum_{k=1}^K
+\vsubset{\Delta \alphav}{k}
+\Big)
+\geq (1-\gamma) \bD(\alphav)
+ + \gamma 
+ \sum_{k=1}^K 
+ \Ggk(\vsubset{\Delta \alphav}{k}; \wv). \vspace{-2mm}
+\]
+\end{lemma}
+\textcolor{blue}{Checked Lemma 2, statement stays the same and the proof almost too (the two changes are in blue in the proof)}
+
+The role of the parameter $\sigma'$ is to measure the difficulty of the given 
+data partition. For our purposes, we will see that it must be chosen not 
+smaller than \textcolor{blue}{I suspect the definition of this will change a bit}
+\begin{equation}
+\label{eq:sigmaPrimeSafeDefinition}
+\sigma'
+\geq
+\sigma'_{min}
+ \eqdef
+ \gamma
+ \max_{\alphav\in \R^n}
+ \frac{
+ \|A \alphav\|^2}{\sum_{k=1}^K \|A \vsubset{\alphav}{k}\|^2} \ 
+\end{equation}
+
+In the following Lemma \ref{lem:sigmaPrimeNotBad}, we show that this parameter can 
+be upper-bounded by $\gamma K$, which is trivial to calculate for all values $\gamma\in\R$. We show experimentally (Section \ref{sec:experiments}) that this safe upper bound for $\sigma'$ has a minimal effect on the overall performance 
+of the algorithm. Our main theorems below show 
+convergence rates dependent on $\gamma \in [\frac1K,1]$, which we refer to as the \textit{aggregation parameter}.
+
+\textcolor{This lemma might also need some small changing}
+\begin{lemma}\label{lem:sigmaPrimeNotBad}
+The choice of $\sigma' := \gamma K$ is valid for \eqref{eq:sigmaPrimeSafeDefinition}, i.e.,
+\[
+\gamma K
+\geq
+\sigma'_{min} 
+% \eqdef
+%\gamma
+% \max_{\alphav\in \R^n}
+% \frac{
+% \|A \alphav\|^2}{\sum_{k=1}^K \|A \vsubset{\alphav}{k}\|^2}
+\]
+\end{lemma}
+
+\paragraph{Notion of Approximation Quality of the Local Solver.}
+
+\begin{assumption}[$\Theta$-approximate solution]
+\label{asm:THeta}
+We assume that 
+there exists $\Theta \in [0,1)$ such that 
+$\forall k\in [K]$, 
+the local solver at any iteration $t$ produces
+a (possibly) randomized approximate solution $\vsubset{\Delta \alphav}{k}$,
+which satisfies
+\begin{align}
+\label{eq:localSolutionQuality}
+\Exp\big[
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+-
+ \Ggk(\vsubset{\Delta \alphav}{k};\wv)
+\big] 
+\leq 
+\\ \qquad \nonumber \Theta
+\left(
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+ -
+ \Ggk({\bf 0};\wv)
+ \right),
+\end{align}
+where\vspace{-2mm}
+\begin{align}
+\label{eq:asjfcowjfcaw}
+%was: \Delta \alphav^*
+\vsubset{\Delta \alphav^*}{k}
+\in \argmax_{\Delta \alphav \in \R^n} \ 
+%was: \sum_{k=1}^K
+ \Ggk(\vsubset{\Delta \alphav}{k};\wv) \quad \forall k\in[K]. % was: no for all
+ \hspace{-5mm}\vspace{-1mm}
+\end{align}
+
+\end{assumption} 
+We are now ready to describe the \cocoap framework, shown in Algorithm \ref{alg:cocoa}.
+The crucial difference compared to the existing \cocoa algorithm \cite{jaggi2014communication} is the more general local subproblem,  as defined in \eqref{eq:subproblem}, as well as the aggregation parameter $\gamma$. 
+These modifications allow the option of directly adding updates to the global vector~$\wv$.
+
+
+\begin{algorithm}[h]
+\caption{\cocoap Framework}
+\label{alg:cocoa}
+
+\begin{algorithmic}[1]
+\STATE {\bf Input:} Datapoints $A$ distributed according to partition $\{\mathcal{P}_k\}_{k=1}^K$.
+Aggregation parameter $\gamma\!\in\![\frac1K,1]$, 
+subproblem parameter $\sigma'$ for the subproblems
+$\Ggk(  \vsubset{\Delta \alphav}{k}; \wv)$ for each $k\in[K]$.\\
+Starting point $\vc{\alphav}{0} = \0 \in \R^n$, $\vc{\wv}{0}:=-\bv\in \R^d$.
+\FOR {$t = 0, 1, 2, \dots $}
+  \FOR {$k \in \{1,2,\dots,K\}$ {\bf in parallel over computers}}
+     \STATE call the local solver, computing
+     a $\Theta$-approximate solution 
+     $\vsubset{\Delta \alphav}{k}$   
+        of  the local subproblem \eqref{eq:subproblem} 
+     \STATE update $\vsubset{\vc{\alphav}{t+1}}{k} := \vsubset{\vc{\alphav}{t}}{k} + \gamma \, \vsubset{\Delta \alphav}{k}$
+     \STATE return $\Delta \wv_k :=\frac1{\lambda n} A \vsubset{\Delta \alphav}{k} - \bv$ %TODO: think again about the most user friendly interface for local solver: should the local solver only return delta alpha, or its delta \wv as well?
+  \ENDFOR
+  \STATE reduce\vspace{-7mm}
+\begin{equation}\label{eq:primalGlobalUpdate}\vspace{-2mm}
+\vc{\wv}{t+1}  := \vc{\wv}{t} +
+  \gamma \textstyle \sum_{k=1}^K \Delta \wv_k.
+\end{equation}
+%\begin{equation}\label{eq:dualGlobalUpdate}
+%\vc{\alphav}{t+1}  := \vc{\alphav}{t} +
+%  \gamma \sum_{k=1}^K
+%  \vsubset{\Delta \alphav}{k}.
+%\end{equation}
+  
+  
+\ENDFOR 
+\end{algorithmic}
+\end{algorithm}
+
+
+\section{Convergence Guarantees}
+\label{sec:convergence}
+
+Before being able to state our main convergence results, we introduce some useful quantities and the following main lemma characterizing the effect of iterations of Algorithm~\ref{alg:cocoa}, for any chosen internal local solver.
+
+\begin{lemma}
+\label{lem:basicLemma}
+Let $\ell_i^*$ be strongly\footnote{%
+Note that the case of weakly convex $\ell_i^*(.)$ is explicitly allowed here as well, as the Lemma holds for the case $\mu = 0$.
+} %
+convex with convexity parameter
+$\mu \geq 0$ with respect to the norm $\|\cdot\|$, $\forall i\in[n]$.
+Then for all iterations~$t$ of Algorithm~\ref{alg:cocoa} under Assumption~\ref{asm:THeta}, and any $s\in [0,1]$, it holds that
+\begin{align}
+\label{eq:lemma:dualDecrease_VS_dualityGap}
+&\Exp[
+\bD(\vc{\alphav}{t+1})
+-
+\bD(\vc{\alphav}{t})
+ ]
+\geq
+\\ \nonumber
+&\qquad\qquad\qquad\qquad
+\gamma
+(1-\Theta)
+ \Big(
+ s G(\vc{\alphav}{t})
+-
+\frac{\sigma'}{2\lambda }
+\big(\frac sn \big)^2
+\vc{R}{t}
+ \Big), \vspace{-2mm}
+\end{align}
+where\vspace{-2mm}
+\begin{align*}
+\tagthis \label{eq:defOfR}
+\vc{R}{t}&:=
+-
+\tfrac{ \lambda\mu n (1-s)}{\sigma' s }
+  % \textstyle{\sum}_{i =1}^n 
+ \|\vc{\uv}{t}-\vc{\alphav}{t}\|^2 
+\\ \qquad \nonumber &+ 
+\textstyle{\sum}_{k=1}^K   
+  \| A \vsubset{  (\vc{\uv}{t}  - \vc{\alphav}{t} )}{k}\|^2,
+\end{align*}
+for $\vc{\uv}{t} \in\R^n$
+with \vspace{-1mm}
+\begin{equation}
+\label{eq:defintionOfUi}
+-\vc{u_i}{t}
+ \in \partial \ell_i(\wv(\vc{\alphav}{t})^T \xv_i).
+\end{equation}
+\end{lemma}
+
+\textcolor{blue}{Lemma 3 works exactly the same in our case, even though I'd have expected a b to show up but I
+don't see it from the proof. I'm not totally sure though as there are passages in the proof I don't fully understand}
+
+\textcolor{blue}{Provided that the Lemma 3 stays exactly the same, the next one should too.
+Also as it is shown in the following page, this lemma won't require any other change since I found a new
+surrogate to the Lasso loss (a new one, not the quadratic one) such that the conjugate is Liptschitz;
+we can then reuse it as it is.}
+The following Lemma provides a uniform bound on~$\vc{R}{t}$:
+\begin{lemma}
+\label{lemma:BoundOnR}
+If $\ell_i$ are $L$-Lipschitz 
+continuous for all $i\in [n]$, then\vspace{-3mm}
+\begin{equation}
+\label{eq:asfjoewjofa}
+\forall t: 
+\vc{R}{t}
+\leq 4L^2 
+\underbrace{\sum _{k=1}^K 
+\sigma_k  n_k}_{=: \sigma}, \vspace{-2mm} %TODO: that's not a reader friendly way to introduce and explain sigma
+\end{equation}
+where\vspace{-1mm}
+\begin{equation}
+\label{eq:definitionOfSigmaK}
+\sigma_k \eqdef
+ \max_{\vsubset{\alphav}{k} \in \R^n}
+ \frac{\|A \vsubset{\alphav}{k}\|^2}{
+ \|\vsubset{\alphav}{k}\|^2}.
+\end{equation}
+\end{lemma}
+
+\begin{remark}
+\label{rmk:asfwaefwae}
+If all data-points $\xv_i$ are normalized such that
+$\|\xv_i\|\leq 1$ $\forall i\in [n]$, then
+$\sigma_k \leq |\mathcal{P}_k| = n_k$.
+Furthermore, if we assume that the data partition is balanced, i.e., that 
+$n_k = n/K$ for all $k$, then $\sigma \le n^2/K$. This can be used to bound the constants $\vc{R}{t}$, above, as  
+$
+\vc{R}{t} \leq  \frac{4L^2 n^2}{K}.$
+\end{remark}
+
+ 
+
+\subsection{Primal-Dual Convergence for General Convex Losses}
+\textcolor{blue}{I skipped over this section as here everything should follow just the same since the previous lemma didn't
+really change in the new setting.}
+The following theorem shows the convergence for non-smooth loss functions, in terms of objective values as well as primal-dual gap.
+The analysis in \cite{jaggi2014communication} only covered the case of smooth loss functions.
+
+\begin{theorem}
+\label{thm:convergenceNonsmooth}
+ 
+Consider Algorithm \ref{alg:cocoa}  with $\vc{\alphav}{0}$=${\bf 0}$$\in$$\R^n$. Let Assumption \ref{asm:THeta}
+hold, $\ell_i(\cdot)$ be $L$-Lipschitz continuous,
+and $\epsilon_\calG$ $>$$0$ be the desired duality gap (and hence an upper-bound on primal sub-optimality).
+Then after $T$ iterations, where
+\begin{align}\label{eq:dualityRequirements}
+T
+&\geq
+T_0 + 
+\max\{\Big\lceil \frac1{\gamma (1-\Theta)}\Big\rceil,\frac
+{4L^2  \sigma   \sigma'}
+{\lambda n^2 \epsilon_\calG
+\gamma (1-\Theta)}\},  
+\\
+T_0
+&\geq t_0+
+\left(
+\frac{2}{ \gamma (1-\Theta) }
+\left(
+\frac
+{8L^2  \sigma   \sigma'}
+{\lambda n^2 \epsilon_\calG}
+-1
+\right)
+\right)_+,\notag
+\\
+t_0 &\geq 
+  \max(0,\Big\lceil \tfrac1{\gamma (1-\Theta)}
+\log(
+\tfrac{
+ 2\lambda n^2 (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
+  }{4 L^2 \sigma \sigma'}
+  )
+ \Big\rceil),\notag
+\end{align}
+we have that the expected duality gap satisfies
+\[
+\Exp[\bP( \wv(\overline\alphav)) - \bD(\overline \alphav) ] \leq \epsilon_\calG,
+\]
+at the averaged iterate
+\begin{equation}\label{eq:averageOfAlphaDefinition}
+\overline \alphav: = \tfrac1{T-T_0}\textstyle{\sum}_{t=T_0+1}^{T-1} \vc{\alphav}{t}. 
+\end{equation}
+
+\end{theorem}
+
+
+The following corollary of the above theorem clarifies our main result: The more aggressive adding of the partial updates, as compared averaging, offers a very significant improvement in terms of total iterations needed.
+While the convergence in the `adding' case becomes independent of the number of machines $K$, the `averaging' regime shows the known degradation of the rate with growing $K$, which is a major drawback of the original \cocoa algorithm. This important difference in the convergence speed is not a theoretical artifact but also confirmed in our practical experiments below for different $K$, as shown e.g. in Figure~\ref{fig:scaling_k}.
+
+We further demonstrate below that by choosing $\gamma$ and $\sigma'$ accordingly, we can still recover the original \cocoa algorithm and its rate.
+
+
+\begin{corollary}\label{cor:convergence}
+Assume that 
+all datapoints $\xv_i$ are bounded as $\|\xv_i\|\leq 1$
+and that 
+the data partition is balanced, i.e. that 
+$n_k = n/K$ for all $k$.
+We consider two different possible choices of the aggregation parameter~$\gamma$: \vspace{-1em}
+\begin{itemize}
+\item 
+(\cocoa Averaging, $\gamma := \frac1K$):
+In this case, $\sigma':=1$ is a valid choice which satisfies 
+\eqref{eq:sigmaPrimeSafeDefinition}.
+Then using $\sigma \le n^2/K$ in light of Remark \ref{rmk:asfwaefwae}, we have that $T$ iterations are sufficient for primal-dual accuracy $\epsilon_\calG$, with
+\begin{align*}
+T
+&\geq
+T_0 + 
+\max\{\Big\lceil \frac K{ (1-\Theta)}\Big\rceil,\frac
+{4L^2      }
+{\lambda \epsilon_\calG
+ (1-\Theta)}\},  
+\\
+T_0
+&\geq t_0+
+\left(
+\frac{2 K}{  (1-\Theta) }
+\left(
+\frac
+{8L^2       }
+{\lambda K \epsilon_\calG}
+-1
+\right)
+\right)_+,
+\\
+t_0 &\geq 
+  \max(0,\big\lceil \tfrac K{ (1-\Theta)}
+\log(
+ \tfrac{2\lambda (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
+  } {4 K L^2   }
+  )
+ \big\rceil) 
+\end{align*}
+Hence the more machines $K$, the more iterations are needed (in the worst case).
+
+\item
+(\cocoap Adding, $\gamma := 1$):
+In this case, the choice of $\sigma':=K$ satisfies 
+\eqref{eq:sigmaPrimeSafeDefinition}.
+Then using $\sigma \le n^2/K$ in light of Remark \ref{rmk:asfwaefwae}, we have that $T$ iterations are sufficient for primal-dual accuracy $\epsilon_\calG$, 
+with\begin{align*}
+T
+&\geq
+T_0 + 
+\max\{\Big\lceil \frac1{  (1-\Theta)}\Big\rceil,\frac
+{4L^2  }
+{\lambda  \epsilon_\calG
+  (1-\Theta)}\},  
+\\
+T_0
+&\geq t_0+
+\left(
+\frac{2}{   (1-\Theta) }
+\left(
+\frac
+{8L^2   }
+{\lambda  \epsilon_\calG}
+-1
+\right)
+\right)_+,
+\\
+t_0 &\geq 
+  \max(0,\big\lceil \tfrac1{  (1-\Theta)}
+\log(
+\tfrac{
+ 2\lambda n  (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
+  }{4 L^2   K}
+  )
+ \big\rceil)
+\end{align*}
+This is significantly better than the averaging case above.
+\end{itemize}
+\end{corollary}
+\vspace{-.5em}
+
+In practice, we usually have $\sigma \ll n^2/K$, and hence the actual convergence rate can be much better than the proven worst-case bound.
+Table \ref{tbl:Sigma}
+shows that the actual value of $\sigma$ is typically between one and two orders of magnitudes smaller compared to our used upper-bound $n^2/K$.
+\vspace{-1em} 
+
+\begin{table}[h]
+  \centering
+  \caption{The ratio of upper-bound $\tfrac{n^2}{K}$ divided by the true value of the parameter~$\sigma$, for some real datasets. }
+    \vspace{1mm}
+  \label{tbl:Sigma}
+  \scriptsize
+    \begin{tabular}{rrrrrrr}
+    \toprule
+    K     & 16    & 32    & 64    & 128   & 256   & 512 \\
+    \midrule
+    news  & 15.483 & 14.933 & 14.278 & 13.390 & 12.074 & 10.252 \\
+    real-sim & 42.127 & 36.898 & 30.780 & 23.814 & 16.965 & 11.835 \\
+    rcv1  & 40.138 & 23.827 & 28.204 & 21.792 & 16.339 & 11.099 \\
+     \midrule
+    K     & 256   & 512   & 1024  & 2048  & 4096  & 8192 \\
+    \midrule
+    covtype & 17.277 & 17.260 & 17.239 & 16.948 & 17.238 & 12.729 
+    %\\
+  %  webspam & 1.1719 & 1.1714 & 1.1651 & 1.1087 & 1.0519 & 0.3489 \\
+\\ \bottomrule
+    \end{tabular} 
+\end{table}% 
+    \vspace{-1mm}
+
+\iffalse
+\begin{table}[htbp]
+  \centering
+  \caption{$K\gamma/\sigma'_{\min} $}
+  \label{tbl:Sigma'}
+  \scriptsize
+    \begin{tabular}{rrrrrrr}
+    \toprule
+ %   K     & 1     & 2     & 4     & 8     & 16    & 32 \\
+ %   \midrule
+ %   a1a   & 1.0000 & 1.0002 & 1.0014 & 1.0032 & 1.0074 & 1.0162 \\
+ %   svmguide3 & 1.0000 & 1.0003 & 1.0005 & 1.0011 & 1.0014 & 1.0027 \\
+ %   svmguide1.t & 1.0000 & 1.0000 & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+ %   splice\_scale & 1.0000 & 1.0344 & 1.0964 & 1.2488 & 1.4770 & 1.9072 \\
+ %   a3a   & 1.0000 & 1.0003 & 1.0007 & 1.0018 & 1.0036 & 1.0082 \\
+ %   \midrule
+ %   K     & 4     & 8     & 16    & 32    & 64    & 128 \\
+ %   \midrule
+ %   w5a   & 1.0121 & 1.0294 & 1.0599 & 1.1694 & 1.2534 & 1.3931 \\
+ %   gisette\_scale & 1.0002 & 1.0004 & 1.0008 & 1.0016 & 1.0034 & 1.0071 \\
+ %   mushrooms & 1.0883 & 1.0950 & 1.1042 & 1.1117 & 1.1179 & 1.1354 \\
+%    \midrule
+    K     & 16    & 32    & 64    & 128   & 256   & 512 \\
+    \midrule
+    news  & 1.0808 & 1.1264 & 1.1770 & 1.2553 & 1.3838 & 1.6036 \\
+    real-sim & 1.5096 & 1.6114 & 1.7430 & 2.0018 & 2.3918 & 3.0307 \\
+    rcv1  & 1.0887 & 1.1842 & 1.3778 & 1.6908 & 2.2273 & 2.9938 \\
+ %   w1a.t & 1.0449 & 1.1445 & 1.2250 & 1.2835 & 1.3641 & Nan \\
+    \midrule
+    K     & 256   & 512   & 1024  & 2048  & 4096  & 8192 \\
+    \midrule
+    covtype & 1.0000 & 1.0000 & 1.0001 & 1.0001 & 1.0005 & 1.0042 \\
+    webspam & 1.0000 & 1.0002 & 1.0006 & 1.0001 & 1.0006 & 1.0011 \\
+ \bottomrule
+    \end{tabular}% 
+\end{table}% 
+ \fi
+
+\subsection{Lasso}
+We wish to solve the following minimization problem:
+$$
+\kappa {\norm{\alpha}}_1 + \frac{1}{2n} {\norm{A\alpha - b}}_2^2
+$$
+First of all, we'll rewrite it a form compatible to the one studied in CoCoA+:
+$$
+-\frac{1}{n} \sum_{i = 1}^{n} {n \kappa |\alpha_i|} - \frac{\lambda}{2} {\norm{A\alpha - b}}_2^2
+$$
+with $\lambda = \frac{1}{n}$ and we'll define:
+$
+\ell(\alpha_i) = n \kappa |\alpha_i|
+$.
+We now notice that for an optimal solution $\alpha$ to this problem, it holds that for every $i$:
+$$
+\ell(\alpha_i) \leq {\norm{b}}^2_2 := B
+$$
+since the solution with $\alpha = \bf{0}$ has objective value $B$. Therefore it must be that
+$$
+|\alpha_i| \leq \frac{B}{n\kappa}.
+$$
+We can therefore define a surrogate loss function $\bar{\ell}$ to be as follows:
+\begin{displaymath}
+    \bar{\ell}(\alpha_i) = \left\{
+        \begin{array}{lr}
+            n \kappa |\alpha_i| & : |\alpha_i| \leq B / (n \kappa) \\
+            +\infty & : otherwise
+        \end{array}
+    \right.
+\end{displaymath}
+and the following problem will thus clearly have the same optimal solution as the one defined with $\ell$:
+$$
+D(\alpha) = -\frac{1}{n} \sum_{i = 1}^{n} \bar{\ell}_i(\alpha_i) - \frac{\lambda}{2} {\norm{A\alpha - b}}_2^2.
+$$
+We'll now compute the dual conjugate of $\bar{\ell}$, which is as follows (a proof will come):
+\begin{displaymath}
+    \bar{\ell^*}(x) = \left\{
+        \begin{array}{lr}
+            0 & : \frac{x}{n\kappa} \in [-1,1]  \\
+            B(|\frac{x}{n\kappa}| - 1) & : otherwise
+        \end{array}
+    \right.
+\end{displaymath}
+The convenient thing about this conjugate with respect to the indicator function (the conjugate of $\ell$) is of course
+that is defined on the entire $\mathbb{R}$. Even better, this conjugate is $B/{n \kappa}$ Liptschitz!
+\comment {
+\subsection{Primal-Dual Convergence for Smooth Losses}
+
+The following theorem shows the convergence for smooth losses, in terms of the objective as well as primal-dual gap.
+
+\begin{theorem}
+\label{thm:convergenceSmoothCase}
+Assume the loss functions functions 
+$\ell_i$ are $(1/\mu)$-smooth $\forall i\in[n]$.
+We define $\sigma_{\max} = 
+\max_{k\in[K]} \sigma_k$. Then after $T$ iterations of Algorithm \ref{alg:cocoa}, with\vspace{-1mm}
+$$
+ T
+    \geq 
+\tfrac{1}
+   {\gamma
+(1-\Theta)}
+\tfrac
+{\lambda\mu n+
+\sigma_{\max} \sigma'}
+{ \lambda\mu n }
+    \log \tfrac1{\epsilon_\bD} , \vspace{-1mm}
+$$
+it holds that\vspace{-2mm}
+$$\Exp[\bD(\alphav^*)
+  - \bD(\vc{\alphav}{T})]
+   \leq \epsilon_\bD.$$
+Furthermore, after $T$ iterations with\vspace{-1mm}
+$$
+ T 
+    \geq 
+\tfrac{1}
+   {\gamma
+(1-\Theta)}
+\tfrac
+{\lambda\mu n+
+\sigma_{\max} \sigma'}
+{ \lambda\mu n }
+    \log 
+\left(
+\tfrac{1}
+   {\gamma
+(1-\Theta)}
+\tfrac
+{\lambda\mu n+
+\sigma_{\max} \sigma'}
+{ \lambda\mu n }
+    \tfrac1{\epsilon_\calG}
+    \right)  ,
+$$
+we have the expected duality gap
+$$
+\Exp[
+\bP( \wv(\vc{\alphav}{T})) - \bD(\vc{\alphav}{T})
+%G(\vc{\alphav}{T})
+]\leq \epsilon_\calG.
+$$
+\end{theorem}
+
+
+The following corollary clarifies the impact of the different aggregation of the updates in the \cocoap scheme as compared to \cocoa, for the case of smooth losses.
+It will again show that while the \cocoa variant suffers from degrading with the increase of the number of machines $K$, the new $\cocoap$ rate becomes independent of $K$.
+
+\begin{corollary}\label{cor:convergenceSmooth}
+Assume that 
+all datapoints $\xv_i$ are bounded as $\|\xv_i\|\leq 1$
+and that 
+the data partition is balanced, i.e., that 
+$n_k = n/K$ for all $k$.
+We again consider the same two different possible choices of the aggregation parameter~$\gamma$: \vspace{-1mm}
+\begin{itemize}
+\item 
+(\cocoa Averaging, $\gamma := \frac1K$):
+In this case, $\sigma':=1$ is a valid choice which satisfies 
+\eqref{eq:sigmaPrimeSafeDefinition}.
+Then using $\sigma_{\max} \le n_k = n/K$ in light of Remark \ref{rmk:asfwaefwae}, we have that $T$ iterations are sufficient for suboptimality %primal-dual accuracy 
+$\epsilon_\bD$, with
+\begin{align*}
+T
+&\geq
+\tfrac{1}
+   {1-\Theta}
+\tfrac
+{\lambda\mu K +
+1}
+{ \lambda\mu }
+    \log \tfrac1{\epsilon_\bD}
+\end{align*}
+Hence the more machines $K$, the more iterations are needed (in the worst case).
+
+\item
+(\cocoap Adding, $\gamma := 1$):
+In this case, the choice of $\sigma':=K$ satisfies 
+\eqref{eq:sigmaPrimeSafeDefinition}.
+Then using $\sigma_{\max} \le n_k = n/K$ in light of Remark \ref{rmk:asfwaefwae}, we have that $T$ iterations are sufficient for suboptimality %primal-dual accuracy 
+$\epsilon_\calG$, with
+\begin{align*}
+T
+&\geq
+\tfrac{1}
+   {
+(1-\Theta)}
+\tfrac
+{\lambda\mu+1}
+{ \lambda\mu }
+    \log \tfrac1{\epsilon_\bD}
+\end{align*}
+This is significantly better than in the averaging case above.
+Both convergence rates hold analogously for the duality gap.
+
+\end{itemize}
+\end{corollary}
+
+ 
+\subsection{Comparison with Original \cocoa}
+
+\begin{remark}%[Comparison with original \cocoa]
+
+If we choose the averaging option
+$\gamma :=\frac1K$ for aggregating the updates, together with $\sigma' := 1$,
+then the resulting Algorithm \ref{alg:cocoa} is identical with \cocoa analyzed in \cite{jaggi2014communication}. 
+However, their results provide only convergence for smooth loss functions $\ell_i$ and provide guarantees for dual sub-optimality and not the duality gap.
+
+Formally, when $\sigma' = 1$, the subproblems \eqref{eq:subproblem} will differ from the original dual $\bD(.)$ only by an additive constant, which does not affect the local optimization algorithms used within \cocoa.
+%the connection can be seen by looking at the squared norm regularizer part of subproblem \eqref{eq:subproblem} , and observing that the 1/K part is just a constant, not changing the local SDCA updates.
+%HOWEVER, we should be aware that the definition of multiplicative approximation is different!!!
+\end{remark}
+
+%We note that even for special case of original \cocoa, our convergence results presented here both in Theorem \ref{thm:convergenceNonsmooth} (non-smooth) and Theorem \ref{thm:convergenceSmoothCase} (smooth) %and the respective Corollary \ref{cor:convergence} 
+%are stronger compared to \cite{jaggi2014communication}, as they show the same rate in duality gap (and a rate for convergence for non-smooth of objective was not known before).
+%%(the later loosing a constant of $n$ when comparing the rate on the objective with the primal-dual rate).
+
+} %end of comment
+
+\comment{
+\section{SDCA as a Local Solver}
+
+We have shown convergence rates for Algorithm \ref{alg:cocoa}, provided that one uses a local solver with an approximation quality of $\Theta$ (Assumption~\ref{asm:THeta}).
+An important question, then, is which solver can provide a solution of that quality.
+
+In this section we will show that coordinate ascent (SDCA) applied on the local subproblem will indeed deliver such a solution. 
+The \localSDCA solver is summarized in Algorithm \ref{alg:localSDCA}.
+As an input, the methods receives the local $\alphav$ variables, as well as a shared vector $\wv \overset{\eqref{eq:PDMapping}}{=} \wv(\alphav )$ being compatible with the last state of all local $\alphav\in \R^n$ variables.
+The \localSDCA algorithm will then produce a random sequence of iterates
+$\big\{\vc{\vsubset{
+\Delta \alphav}{k}}{h}\big\}_{h=1}^H$, on each part $k\in [K]$. \vspace{-1mm}
+
+\begin{algorithm}[h]
+\caption{\localSDCA$(\vsubset{\alphav}{k}, \wv, k, H)$}
+\label{alg:localSDCA}
+
+\begin{algorithmic}[1]
+\STATE {\bf Input:} 
+$\vsubset{\alphav}{k}, \wv=\wv(\alphav)$
+\STATE {\bf Data:} Local $\{(\xv_i, y_i)\}_{ i \in \mathcal{P}_k}$
+\STATE {\bf Initialize:}   $\vc{\Delta \alphav_{[k]}}{0} \leftarrow \0 \in \mathbb R^{n}$
+\FOR {$h = 0, 1, \dots ,H-1$} %TODO: should we do 1..H instead?
+  \STATE choose $i\in \mathcal{P}_k$ uniformly at random
+  \STATE 
+  $\displaystyle
+  \delta^*_i
+ = \argmax_{\delta_i \in \R} \,
+ \Ggk(  
+ \vc{\vsubset{\Delta \alphav}{k}}{h}
+ + \delta_i \ev_i; \wv)$
+  \STATE  
+  $\vsubset{
+  \Delta\alphav^{(h+1)}}{k} \leftarrow \vsubset{
+  \Delta\alphav^{(h)}}{k} + \delta^*_i \ev_i$
+ % \STATE $ \wv^{(h+1)} \leftarrow   \wv^{(h)} + \frac{1}{\lambda n} \delta^* \xv_i$
+\ENDFOR 
+%\STATE {\bf Output:} $\Delta \alphav_{[k]}$ 
+\STATE {\bf Output:} $\Delta\alphav_{[k]}^{(H)}$ %and $\Delta\wv := A \Delta\av_{[k]}^{(H)}$ 
+\end{algorithmic}
+\end{algorithm}
+
+The following two Theorems
+(\ref{thm:LocalSDCA_smooth2},
+\ref{thm:LocalSDCA_smooth1})
+characterize the convergence of the \localSDCA method given in Algorithm~\ref{alg:localSDCA}, for both smooth and non-smooth  functions. In all the results we will use
+ $r_{\max} := \max_{i \in [n]} \|\xv_i\|^2$.
+ 
+\begin{theorem}
+\label{thm:LocalSDCA_smooth2}
+Assume the functions $\ell_i$ are $(1/\mu)-$smooth for $i\in[n]$.
+Then Assumption~\ref{asm:THeta} on the  local approximation quality $\Theta$ is satisfied
+for \localSDCA as given in Algorithm \ref{alg:localSDCA}, if we
+%start with $\vc{\Delta \alphav_{[k]}}{0} = {\bf 0} \in \R^n$, and
+choose the number of inner iterations $H$ as \vspace{-1mm}
+\begin{equation}
+\label{eq:asjfwjfdwafcea}
+H \geq n_k \frac{\sigma' r_{\max} + \lambda n \mu}{\lambda n \mu} \log \frac1{\Theta} . \vspace{-1mm}
+\end{equation}
+\end{theorem}
+ 
+
+\begin{theorem}
+\label{thm:LocalSDCA_smooth1}
+Assume the functions $\ell_i$ are $L$-Lipschitz for $i\in[n]$.
+Then Assumption~\ref{asm:THeta} on the local approximation quality $\Theta$ is satisfied
+for \localSDCA as given in Algorithm \ref{alg:localSDCA}, if we
+%start with $\vc{\Delta \alphav_{[k]}}{0} = {\bf 0} \in \R^n$, and
+choose the number of inner iterations $H$ as  \vspace{-1mm}
+\begin{equation}
+\label{eq:H_convexLoss}
+H \geq   n_k   
+ \left( 
+\frac{1-\Theta}{\Theta  } 
+  +
+  \frac{\sigma'r_{\max}}
+       {2\Theta \lambda n^2}        
+\frac{\| \vsubset{\Delta \alphav^*}{k}\|^2}
+{  \Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( {\bf 0}; \wv)}
+ \right) .
+\end{equation}
+\end{theorem}
+
+\iffalse
+\begin{theorem}
+\label{thm:LocalSDCA_smoothShai}
+TODO
+\todo[inline]{
+one more theorem where $H$ doesn't depend on $\vsubset{\Delta \alphav^*}{k}$
+}
+\end{theorem}
+\fi
+
+
+\begin{remark}
+Between the different regimes allowed in \cocoap (ranging between averaging and adding the updates) the computational cost for obtaining the required local approximation quality varies with the choice of $\sigma'$.
+From the above worst-case upper bound, we note that the cost can increase with $\sigma'$, as aggregation becomes more aggressive. %, when compared to \cocoa
+However, as we will see in the practical experiments in Section \ref{sec:experiments} below, the additional cost is negligible compared to the gain in speed from the different aggregation, when measured on real datasets.
+%TODO: if we add the table with different sigma', we can refer to it again here, saying that sigma' for real is not as bad as in worst-case.
+\end{remark}
+
+
+
+
+\section{Discussion and Related Work}
+\label{sec:relatedWork}
+
+\paragraph{SGD-based Algorithms.}
+For the empirical loss minimization problems of interest here, stochastic subgradient descent (SGD) based methods are well-established.
+Several distributed variants of SGD have been proposed \cite{Niu:2011wo,Liu:2014wj,Duchi:2013te}. Many build on the idea of a parameter-server, receiving all SGD updates performed by each local worker. The downside of this approach, even when carefully implemented, is that the amount of required communication is equal to the amount of data read locally (e.g., mini-batch SGD with a batch size of 1 per worker). These variants are in practice not competitive with the more communication-efficient methods considered here, which allow more local updates per round.
+
+%This class of approaches includes MapReduce style communication schemes, which conveniently allow the implementation of standard (possibly accelerated) batch gradient schemes in a direct way, emitting the stochastic gradient update vectors in the map phase, and adding them to obtain the global gradient in the reduce operation.
+%Mini-batch variants of stochastic subgradient descent (SGD) are straight forward to implement in the same framework, and have been studied in the distributed case.
+%While disk-based MapReduce is an extremely slow choice for iterative machine learning algorithms, the communication bottleneck is still there on faster and more low-level system environments such as MPI. %TODO: has nothing to do with related work, right? but people can get strangely upset when they hear MapReduce
+
+\vspace{-1em}
+\paragraph{One-Shot Communication Schemes.}
+At the other extreme, there are distributed methods using only a single round of communication, such as \cite{Zhang:2013wq, Zinkevich:2010tj,Mann:2009tr,McWilliams:2014tl}.
+These require additional assumptions on the partitioning of the data, and furthermore can not guarantee convergence to the optimum solution for all regularizers, as shown in, e.g., \cite{DANE}. \cite{Balcan:2012tc} shows additional relevant lower bounds on the minimum number of communication rounds necessary for a given approximation quality for similar machine learning problems.
+
+\vspace{-1em}
+\paragraph{Methods Allowing Local Optimization.}
+High-performance, flexible methods lie in the middle of the two extremes of the communication vs computation tradeoff.
+It is therefore important to design more meaningful data-local subproblems to be solved per round of communication. 
+In this spirit, \cite{DANE,DISCO} have proposed distributed Newton-type algorithms. In this approach, the subproblems have to be solved to very high accuracy for the convergence rate to hold, which is often prohibitive as the size of the data on one machine is still relative large.\\
+%A very recent approach by \cite{Zhang:2015uv} modifies the Newton-type method of \cite{DANE} (which had very costly subproblems which were not allowed to be solved to only approximate accuracy), by combining local Newton steps with a conjugate gradient method to more efficiently aggregate the updates. However, this method requires strong properties on the Hessian of the objective function.
+%
+%\paragraph{\cocoa.}
+The \cocoa framework \cite{jaggi2014communication} allows using local solvers of weak local approximation quality in each round, while still giving a convergence rate for smooth losses.
+By making use of the primal-dual structure in the line of work of \cite{Yu:2012fp,Pechyony:2011wi,Yang:2013vl,Yang:2013ui,jaggi2014communication,Lee:2015vr}, the \cocoa framework as well as the extension here allow more control over the meaningful aggregation of updates between different machines.
+
+\newcommand{\smalltrimfig}[1]{\subfigure{\includegraphics[trim = 30 180 30 180, clip, width=.246\linewidth]{#1}}}
+
+% Duality Gap vs. # of Communications Plot, and Duality Gap vs. Elapsed Time
+\begin{figure*}[t!]
+% cov & rev, column wise by regularizer lambda
+\smalltrimfig{cov_1e-4_comm.pdf}
+\smalltrimfig{cov_1e-4_time.pdf}
+\smalltrimfig{rcv1_1e-4_comm.pdf}
+\smalltrimfig{rcv1_1e-4_time.pdf}
+\smalltrimfig{cov_1e-5_comm.pdf}
+\smalltrimfig{cov_1e-5_time.pdf}
+\smalltrimfig{rcv1_1e-5_comm.pdf}
+\smalltrimfig{rcv1_1e-5_time.pdf}
+\smalltrimfig{cov_1e-6_comm.pdf}
+\smalltrimfig{cov_1e-6_time.pdf}
+\smalltrimfig{rcv1_1e-6_comm.pdf}
+\smalltrimfig{rcv1_1e-6_time.pdf}
+\vspace{-1.9em}
+\caption{Duality gap vs. the number of communicated vectors, as well as duality gap vs. elapsed time in seconds for two datasets: Covertype (left, $K$=4) and RCV1 (right, $K$=8). Both are shown on a log-log scale, and for three different values of regularization ($\lambda$=1e-4; 1e-5; 1e-6). Each plot contains a comparison of \cocoa (red) and \cocoap (blue), for three different values of $H$, the number of local iterations performed per round. For all plots, across all values of $\lambda$ and $H$, we see that \cocoap converges to the optimal solution faster than \cocoa, in terms of both the number of communications and the elapsed time.
+\vspace{-2mm}}
+\label{fig:add_avg}
+\end{figure*}
+
+
+
+
+\vspace{-1em}
+\paragraph{Mini-Batch Methods.}
+Mini-batch versions of both SGD and coordinate descent (CD) \cite{richtarik2013distributed,NSync,MinibatchASDCA,Yang:2013vl, ALPHA, QUARTZ} suffer from their convergence rate degrading towards the rate of batch gradient descent as the size of the mini-batch is increased. 
+This follows because mini-batch updates are made based on the outdated previous parameter vector $\wv$, in contrast to methods that allow immediate local updates such as \cocoa or local-SGD \cite{jaggi2014communication}.
+Furthermore, the aggregation parameter for mini-batch methods is harder to tune, as it can lie anywhere in the order of mini-batch size.
+In order to balance computation and communication, the mini-batch size must typically be chosen at least two orders of magnitude larger than the number of machines $K$.
+In the \cocoa setting, the aggregation parameter is easier to tune, as it is in the smaller range given by $K$. 
+Our \cocoap extension avoids needing to tune this parameter entirely, by adding.
+
+%CD: \cite{richtarik,richtarikBigData,TTR:IMPROVRED,marecek2014distributed,lu2013complexity,fercoq2014fast,richtarik2013distributed,fercoq2013accelerated}.
+
+\vspace{-1em}
+\paragraph{ADMM.}
+An alternative approach to distributed optimization is to use the alternating direction method of multipliers (ADMM), as used for distributed SVM training in, e.g., \cite{Forero:2010vv}. This uses a penalty parameter balancing between the equality constraint $\wv$ and the optimization objective \cite{boyd2011distributed}. However, the known convergence rates for ADMM are weaker than the more problem-tailored methods mentioned previously, and the choice of the  penalty parameter is often unclear.
+
+\vspace{-1em}
+\paragraph{Batch Proximal Methods.}
+In spirit, for the special case of adding ($\gamma=1$), our method resembles a batch proximal method, using the separable approximation \eqref{eq:subproblem} instead of the original dual \eqref{eq:dual}. All known batch proximal methods require high accuracy subproblem solutions, and don't allow arbitrary solvers of weak accuracy $\Theta$ such as here.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+\section{Numerical Experiments}
+\label{sec:experiments}
+
+%TODO(MJ): be more clear about other competing methods, not only cocoa!
+% how can we make the advantages over those clear?
+
+We present experiments on several large real-world datasets distributed across 
+multiple machines, running on Apache  
+\textsf{\small Spark}. 
+We show that $\cocoap$ converges to the optimal solution faster 
+in terms of total rounds as well as elapsed time as compared to \cocoa in all cases, 
+despite varying: the dataset, values of regularization, batch size, and cluster size 
+(Section \ref{sec:addavg}). In Section \ref{sec:scaling} we demonstrate that this 
+performance translates to orders of magnitude improvement in convergence when 
+scaling up the number of machines $K$, as compared to \cocoa as well as to several 
+other state-of-the-art methods. Finally, in Section~\ref{sec:sigma} we investigate the 
+impact of the local subproblem parameter $\sigma'$ in the \cocoap framework.
+%, showing that the safe upper bound of $\gamma K$ (as given in Lemma~\ref{lem:sigmaPrimeNotBad}) works well in practice.
+
+\subsection{Implementation Details}
+We implement \cocoap and all other algorithms for comparison in Apache  
+\textsf{\small Spark} \cite{Zaharia:2012ve}, and run them on Amazon EC2, 
+using m3.large instances. 
+We apply all methods to the binary hinge-loss support vector machine. 
+The analysis for this non-smooth loss was not covered in 
+\cite{jaggi2014communication} but has been captured here, and thus is both 
+theoretically and practically justified. A summary of the datasets used is shown in 
+Table \ref{tab:datasets}.
+\vspace{-1.5em}
+\begin{table}[h]
+\caption{Datasets for Numerical Experiments. \vspace{1mm}}
+\label{tab:datasets}
+   \begin{center}
+      \begin{tabular}{l| r | r | r  }
+    {\small\textbf{Dataset}} & $n$ &
+    $d$ & {\small\textbf{Sparsity}} \\
+    \hline
+	covertype & 522,911 & 
+	  54 & 22.22\%  \\
+		epsilon & 400,000 &
+	  2,000 & 100\% \\
+	  RCV1 & 677,399 &
+	  47,236 & 0.16\%  \\
+      \end{tabular}
+   \end{center}\vspace{-2em}
+\end{table}
+
+
+\subsection{Comparison of \cocoap and \cocoa}
+\label{sec:addavg}
+We compare the \cocoap and \cocoa frameworks directly using two datasets 
+(Covertype and RCV1) across various values of $\lambda$, the regularizer, in Figure 
+\ref{fig:add_avg}. For each value of $\lambda$ we consider both methods with 
+different values of $H$, the number of local iterations performed before 
+communicating to the master. For all runs of \cocoap we use the safe upper bound of 
+$\gamma K$ for $\sigma'$. In terms of both the total number of communications 
+made and the elapsed time, \cocoap (shown in blue) converges to the optimal solution 
+faster than \cocoa (red). The discrepancy is larger for greater values of $\lambda$, 
+where the  strongly convex regularizer has more of an impact and the problem 
+difficulty is reduced. We also see a greater performance gap for smaller values of $H$, 
+where there is frequent communication between the machines and the master, and changes between the algorithms therefore play a larger role. 
+
+
+
+\subsection{Scaling the Number of Machines $K$}
+\label{sec:scaling}
+
+In Figure \ref{fig:scaling_k} we demonstrate the ability of \cocoap to scale with an 
+increasing number of machines $K$. The experiments confirm the ability of strong 
+scaling of the new method, as predicted by our theory in Section~\ref{sec:convergence}, 
+in contrast to the competing methods.
+Unlike \cocoa, which becomes linearly slower when increasing the number of 
+machines, the performance of \cocoap improves with additional 
+machines, only starting to degrade slightly once~$K$=16 for the RCV1 dataset.
+
+\newcommand{\halftrimfig}[1]{\subfigure{\includegraphics[trim = 40 190 40 180, clip, width=.49\linewidth]{#1}}}
+
+\newcommand{\trimfig}[1]{\subfigure{\includegraphics[trim = 25 240 30 240, clip, width=.6\linewidth]{#1}}}
+\begin{figure}[ht!]
+\centering
+\halftrimfig{new_scaling_k_rcv.pdf}
+\halftrimfig{scaling_k_all_rcv_log.pdf}
+\trimfig{scaling_k_eps.pdf}
+\vspace{-1em}
+\caption{The effect of increasing $K$ on the time (s) to reach an $\epsilon_\bD$-accurate solution. We see that \cocoap converges twice as fast as \cocoa on 100 machines for the Epsilon dataset, and nearly 7 times as quickly for the RCV1 dataset. Mini-batch SGD converges an order of magnitude more slowly than both methods.} \vspace{-1em}
+\label{fig:scaling_k}
+\end{figure}
+
+\subsection{Impact of the Subproblem Parameter $\sigma'$}
+\label{sec:sigma}
+Finally, in Figure \ref{fig:sigma}, we consider the effect of the choice of the subproblem parameter $\sigma'$ on convergence. We plot both the number of communications and clock time  on a log-log scale for the RCV1 dataset with $K$=8 and $H$=$1e4$. For $\gamma=1$ (the most aggressive variant of \cocoap in which updates are added) we consider several different values of $\sigma'$, ranging from $1$ to $8$. The value $\sigma'$=8 represents the safe upper bound of $\gamma K$. The optimal convergence occurs around $\sigma'$=4, and diverges for $\sigma' \le 2$.
+Notably, we see that the easy to calculate upper bound of $\sigma':=\gamma K$ %=8 
+(as given by Lemma \ref{lem:sigmaPrimeNotBad})
+has only slightly worse performance than best possible subproblem parameter in our setting. %This indicates that, even though stronger performance is possible, the bound can be used effectively in practice. 
+%Finding methods by which to easily approximate~$\sigma'$ and reduce this gap further is left as an open problem.
+\vspace{-1em}
+
+\begin{figure}[h!]
+\halftrimfig{sigma_rcv_comm.pdf}
+\halftrimfig{sigma_rcv_time.pdf}
+\vspace{-1em}
+\caption{The effect of $\sigma'$ on convergence of $\cocoap$ for the RCV1 dataset distributed across $K$=8 machines. Decreasing $\sigma'$ improves performance in terms of communication and overall run time until a certain point, after which the algorithm diverges. The ``safe'' upper bound of $\sigma'$:=$K$=8 has only slightly worse performance than the practically best ``un-safe'' value of $\sigma'$.}\vspace{-1em}
+\label{fig:sigma}
+\end{figure}
+
+
+%\subsection{$L$-Lip. loss} 
+ 
+% \subsection{$1/\mu$-smooth loss}
+ 
+ 
+ 
+%
+\section{Conclusion}
+In conclusion, we present a novel framework \cocoap that allows for fast and  
+communication-efficient \textit{additive aggregation} in distributed 
+algorithms for primal-dual optimization. 
+We analyze the theoretical performance of this method, giving strong 
+primal-dual convergence rates with outer iterations scaling independently of 
+the number of machines. 
+We extended our theory to allow for non-smooth losses. Our 
+experimental results show significant speedups over previous methods, including the 
+original \cocoa framework as well as other state-of-the-art methods.
+
+} % end of commented out part
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\clearpage
+\bibliography{minibatch}
+\bibliographystyle{icml2015}
+ 
+
+
+\clearpage
+\appendix
+ \onecolumn
+\part{Appendix}
+
+
+\section{Technical Lemmas}
+
+
+\begin{lemma}
+[Lemma 21 in \cite{ShalevShwartz:2013wl}]
+%[Lemma 3 in \cite{ShalevShawartzZhang}]
+\label{lemma:ajvoiewffa}
+Let $\ell_i : \R \to \R$ be an 
+$L$-Lipschitz continuous. Then for any real value $a$ with $|a|> L$ we have that
+$\ell_i^*(a) = \infty$.
+\end{lemma}
+
+
+%The following lemma is currently used at the end of Proof of Theorem \ref{thm:convergenceSmoothCase}. also, this is the only lemma that uses the bounded loss assumption \eqref{eq:afswfevfwaefa} made in the Setup section
+\begin{lemma}
+\label{lemma:asfewfawfcda}
+Assuming the loss functions $\ell_i$ are bounded by $\ell_i(0) \leq 1$ for all $i\in[n]$ (as we have assumed in \eqref{eq:afswfevfwaefa} above), then 
+for the zero vector $\vc{\alphav}{0}
+ := {\bf 0}\in \R^n$, we have
+\begin{equation}
+\label{eq:afjfjaoefvcwa}
+\bD(\alphav^*)
+ - \bD(\vc{\alphav}{0})
+= 
+\bD(\alphav^*)
+-\bD({\bf 0})
+ \leq 1.
+ \end{equation}
+\end{lemma}
+\begin{proof}
+For $\alphav := {\bf 0}\in \R^n$, we have
+$\wv(\alphav) = 
+\frac1{\lambda n}
+A \alphav 
+ = {\bf 0} \in \R^d$.
+ Therefore, by definition of the dual objective $\bD$ given in~\eqref{eq:dual},
+\begin{align*}
+0 &\leq \bD(\alphav^*)
+-\bD(\alphav)
+\leq P(\wv(\alphav)) - \bD(\alphav)
+ = 0 - \bD(\alphav)
+ \overset{\eqref{eq:afswfevfwaefa},\eqref{eq:dual}
+}{\leq} 1. \qedhere
+\end{align*} 
+\end{proof}
+
+
+
+
+%
+\section{Proofs}
+
+
+\subsection{Proof of Lemma \ref{lem:RelationOfDTOSubproblems}}
+  
+Indeed, we have
+\begin{align}
+\label{eq:afijwfcewa}
+\bD(\alphav
++\gamma 
+\sum_{k=1}^K
+\vsubset{\Delta \alphav}{k}
+)
+&=
+\underbrace{-\frac1n\sum_{i=1}^n
+\ell_i^*(-\alpha_i
+    -\gamma (\sum_{k=1}^K
+     \vsubset{\Delta \alphav}{k})_i)}_{A} -\frac\lambda2 
+\underbrace{\|\frac1{\lambda n}
+A (\alphav + \gamma 
+  \sum_{k=1}^K \vsubset{\Delta \alphav}{k}) \mathbin{\textcolor{blue}{-\bv}} \|^2}_B.
+\end{align}
+Now, let us bound the terms $A$ and $B$ separately.
+We have
+\begin{align*}
+A
+&=
+ -\frac1n\sum_{k=1}^K
+ \left(
+ \sum_{i\in \mathcal{P}_k}
+ \ell_i^*(-\alpha_i-\gamma 
+  (\vsubset{\Delta \alphav}{k})_i)
+ \right)
+=
+ -\frac1n\sum_{k=1}^K
+ \left(
+ \sum_{i\in \mathcal{P}_k}
+ \ell_i^*(-(1-\gamma)
+   \alpha_i-\gamma 
+  (\alphav + \vsubset{\Delta \alphav}{k})_i)
+ \right) 
+\\
+&\geq 
+ -\frac1n\sum_{k=1}^K
+ \left(
+ \sum_{i\in \mathcal{P}_k}
+ (1-\gamma) \ell_i^*(-
+   \alpha_i)
+   +\gamma 
+  \ell_i^*(-(\alphav + \vsubset{\Delta \alphav}{k})_i)
+ \right). 
+\end{align*}
+Where the last inequality is due to Jensen.
+Now we will bound $B$.
+\begin{align*}
+B
+&=
+\|\frac1{\lambda n}
+A (\alphav + \gamma 
+  \sum_{k=1}^K \vsubset{\Delta \alphav}{k}) \mathbin{\textcolor{blue}{-\bv}} \|^2
+=
+\|\wv(\alphav) + \gamma\frac1{\lambda n}
+   \sum_{k=1}^K A\vsubset{\Delta \alphav}{k}  \|^2  
+   =
+\|\wv(\alphav)   \|^2
++
+\sum_{k=1}^K
+2\gamma\frac1{\lambda n} 
+\wv(\alphav)^T  
+    A\vsubset{\Delta \alphav}{k}  
+\\&\quad +
+\gamma
+(\frac1{\lambda n})^2
+\gamma
+\|  
+   \sum_{k=1}^K A\vsubset{\Delta \alphav}{k}  \|^2  
+\overset{\eqref{eq:sigmaPrimeSafeDefinition}}
+{\leq}
+\|\wv(\alphav)   \|^2
++
+\sum_{k=1}^K
+2\gamma\frac1{\lambda n} 
+\wv(\alphav)^T  
+    A\vsubset{\Delta \alphav}{k}  
+   +
+\gamma
+(\frac1{\lambda n})^2
+\sigma'
+   \sum_{k=1}^K \|A \vsubset{\alphav}{k}\|^2.    
+\end{align*}  
+Plugging $A$ and $B$ into 
+  \eqref{eq:afijwfcewa} 
+  will give us
+\begin{align*}
+\nonumber
+ \bD(\alphav
++\gamma 
+\sum_{k=1}^K
+\vsubset{\Delta \alphav}{k}
+)
+ \ge&
+-\frac1n\sum_{k=1}^K
+ \left(
+ \sum_{i\in \mathcal{P}_k}
+ (1-\gamma) \ell_i^*(-
+   \alpha_i)
+   +\gamma 
+  \ell_i^*(-(\alphav + \vsubset{\Delta \alphav}{k})_i)
+ \right)
+\\
+&   
+-\gamma  \frac\lambda2 \|\wv(\alphav)   \|^2
+-(1-\gamma)  \frac\lambda2 \|\wv(\alphav)   \|^2
+-\frac\lambda2  
+\sum_{k=1}^K
+2\gamma\frac1{\lambda n} 
+\wv(\alphav)^T  
+    A\vsubset{\Delta \alphav}{k}  
+ -\frac\lambda2 
+\gamma
+(\frac1{\lambda n})^2
+\sigma'
+   \sum_{k=1}^K \|A \vsubset{\alphav}{k}\|^2
+\\%--------------------------
+ =&
+ \underbrace{
+ -\frac1n\sum_{k=1}^K
+ \left(
+ \sum_{i\in \mathcal{P}_k}
+ (1-\gamma) \ell_i^*(-
+   \alpha_i) 
+ \right)
+-(1-\gamma)  \frac\lambda2 \|\wv(\alphav)   \|^2 
+}_{(1-\gamma) \bD(\alphav)}
+\\
+& 
++  
+\gamma 
+ \sum_{k=1}^K
+ \left(
+ -\frac1n
+ \sum_{i\in \mathcal{P}_k}
+   \ell_i^*(-(\alphav + \vsubset{\Delta \alphav}{k})_i)
+   - \frac1{K} \frac\lambda2 \|\wv(\alphav)   \|^2
+   -   
+  \frac1{n} 
+\wv(\alphav)^T  
+    A\vsubset{\Delta \alphav}{k}
+    -\frac\lambda2  
+\sigma'  \|\frac1{\lambda n}A \vsubset{\alphav}{k}\|^2    
+ \right)
+\\
+\overset{\eqref{eq:subproblem}}{=}& (1-\gamma) \bD(\alphav)
+ +\gamma \sum_{k=1}^K \Ggk(  \vsubset{\Delta \alphav}{k}; \wv).   
+\end{align*}
+ 
+
+ 
+
+
+\subsection{Proof of Lemma \ref{lem:sigmaPrimeNotBad}}
+
+See \cite{richtarik2013distributed}. % hydra
+
+
+
+\subsection{Proof of Lemma \ref{lem:basicLemma}}
+For sake of notation, 
+we will write 
+$\alphav$ instead of $\vc{\alphav}{t}$,
+%$\alphav^+$ instead of $\vc{\alphav}{t+1}$,
+$\wv$ instead of $\wv(\vc{\alphav}{t})$
+and
+$\uv$ instead of $\vc{\uv}{t}$. 
+
+
+Now, let us estimate the expected change of the dual objective. 
+Using the definition of the dual update $\vc{\alphav}{t+1} := \vc{\alphav}{t} + \gamma \, \sum_k \vsubset{\Delta \alphav}{k}$ resulting in Algorithm~\ref{alg:cocoa}, we have
+\begin{align*}
+\Exp\big[\bD(\vc{\alphav}{t})
+ - \bD(\vc{\alphav}{t+1})\big]
+& =
+\Exp\Big[\bD(\alphav)
+ - \bD(\alphav +
+  \gamma \sum_{k=1}^K
+  \vsubset{\Delta \alphav}{k})\Big]
+\\
+& \text{(by Lemma \ref{lem:RelationOfDTOSubproblems} on the local function $\Ggk(\alphav;\wv)$ approximating the global objective $\bD(\alphav)$)}\\
+&\leq
+\Exp\Big[\bD(\alphav)
+-(1-\gamma)\bD(\alphav)
+-\gamma 
+ \sum_{k=1}^K 
+ \Ggk (\vsubset{
+ \vc{\Delta \alphav}{t}}{k}; \wv)
+\Big]\\
+&=
+\gamma
+\Exp\Big[
+ \bD(\alphav)
+- 
+ \sum_{k=1}^K 
+ \Ggk (\vsubset{
+ \vc{\Delta \alphav}{t}}{k}; \wv)
+\Big]
+\\
+&
+=
+\gamma
+\Exp\Big[
+ \bD(\alphav)
+ -
+ \sum_{k=1}^K 
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+ +
+ \sum_{k=1}^K 
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+- 
+ \sum_{k=1}^K 
+ \Ggk (\vsubset{
+ \vc{\Delta \alphav}{t}}{k}; \wv)
+\Big]
+\\
+&\text{(by the notion of quality \eqref{eq:localSolutionQuality} of the local solver, as in Assumption \ref{asm:THeta})}\\
+&\leq
+\gamma
+\left(
+ \bD(\alphav)
+ -
+ \sum_{k=1}^K 
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+ +
+ \Theta
+ \left(
+ \sum_{k=1}^K  
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+ -
+\underbrace{  \sum_{k=1}^K  
+ \Ggk({\bf 0};\wv)
+ }_{\bD(\alphav)}
+ \right)
+\right)
+\\
+&=
+\gamma
+(1-\Theta)
+\left(
+\underbrace{
+ \bD(\alphav)
+ -
+ \sum_{k=1}^K 
+ \Ggk(\vsubset{\Delta \alphav^*}{k};\wv)
+ }_{C}
+\right).
+\tagthis
+\label{eq:Afasfwafewaef}
+\end{align*} 
+Now, let us upper bound 
+the $C$ term 
+(we will denote by
+$\Delta \alphav^* 
+ = \sum_{k=1}^K \vsubset{\Delta \alphav^*}{k}$):
+\begin{align*}
+C&
+\overset{\eqref{eq:dual},
+\eqref{eq:subproblem}}{=}
+   \frac1n 
+ \sum_{i =1}^n 
+ \left(
+\ell_i^*(-\alpha_i - \Delta \alphav^*_i)
+-\ell_i^*(- \alpha_i)
+\right)
+ +\frac1n  
+\wv(\alphav)^T A  \Delta \alphav^*
+ + \sum_{k=1}^K 
+\frac\lambda2
+ \sigma'   \Big\|\frac1{\lambda n} A \vsubset{\Delta \alphav^*}{k}\Big\|^2
+\\
+&\leq  
+   \frac1n 
+ \sum_{i =1}^n 
+ \left(
+\ell_i^*(-\alpha_i - s (u_i - \alpha_i))
+-\ell_i^*(- \alpha_i)
+\right)
+ +\frac1n  
+\wv(\alphav)^T A  s (\uv  - \alphav )
+ + \sum_{k=1}^K 
+\frac\lambda2
+ \sigma'   \Big\|\frac1{\lambda n} A \vsubset{s (\uv  - \alphav )}{k}\Big\|^2
+\\
+&\overset{\mbox{Strong conv.}}{\leq} 
+   \frac1n 
+ \sum_{i =1}^n 
+ \left(
+s \ell_i^*(-u_i )
++
+(1-s)
+\ell_i^*(-\alpha_i )
+-
+\frac{\mu}{2}
+(1-s)s (u_i -\alpha_i)^2
+-\ell_i^*(- \alpha_i)
+\right)
+ +\frac1n  
+\wv(\alphav)^T A  s (\uv  - \alphav )
+\\& \quad\quad\quad\quad\quad + \sum_{k=1}^K 
+\frac\lambda2
+ \sigma'   \Big\|\frac1{\lambda n} A \vsubset{s (\uv  - \alphav )}{k}\Big\|^2 
+\\
+&=
+   \frac1n 
+ \sum_{i =1}^n 
+ \left(
+s \ell_i^*(-u_i )
+  -s 
+\ell_i^*(-\alpha_i )
+-
+\frac{\mu}{2}
+(1-s)s (u_i -\alpha_i)^2
+\right)
+ +\frac1n  
+\wv(\alphav)^T A  s (\uv  - \alphav )
+  + \sum_{k=1}^K 
+\frac\lambda2
+ \sigma'   \Big\|\frac1{\lambda n} A \vsubset{s (\uv  - \alphav )}{k}\Big\|^2.  
+\end{align*}
+The convex conjugate maximal property implies that
+\begin{equation}
+\label{eq:adjwofcewa}
+\ell_i^*(-u_i)
+= -u_i \wv(\alphav)^T \xv_i
+  -\ell_i(\wv(\alphav)^T \xv_i).
+\end{equation}
+Moreover, from the definition of the primal and dual optimization problems \eqref{eq:primal},
+\eqref{eq:dual}, we can write the duality gap as
+\begin{align}
+\label{eq:asdfjiwjfeojawfa}
+G(\alphav) := \bP(\wv(\alphav))-\bD(\alphav)
+&\overset{
+\eqref{eq:primal},
+\eqref{eq:dual}
+}{=}
+ \frac1{\N} 
+ \sum_{i=1}^\N
+ \left(
+  \ell_i( \xv_j^T \wv) 
+ +  \ell_i^*(- \alpha_i)
+ + \wv(\alphav)^T \xv_i \alpha_i
+ \right).  
+\end{align}
+Hence,
+\begin{align*}
+C
+&\overset{
+\eqref{eq:adjwofcewa}}
+{\leq}
+  \frac1n 
+ \sum_{i =1}^n 
+ \left( 
+-s u_i \wv(\alphav)^T \xv_i
+  -s\ell_i(\wv(\alphav)^T \xv_i)
+  -s 
+\ell_i^*(-\alpha_i )
+\underbrace{-s \wv(\alphav)^T \xv_i \alpha_i
++s \wv(\alphav)^T \xv_i \alpha_i
+}_{0}
+-
+\frac{\mu}{2}
+(1-s)s (u_i -\alpha_i)^2
+\right)
+\\&\qquad  +\frac1n  
+\wv(\alphav)^T A  s (\uv  - \alphav )
+ + \sum_{k=1}^K 
+\frac\lambda2
+ \sigma'   \Big\|\frac1{\lambda n} A \vsubset{s (\uv  - \alphav )}{k}\Big\|^2 
+\\
+&=
+  \frac1n 
+ \sum_{i =1}^n 
+ \left( 
+  -s\ell_i(\wv(\alphav)^T \xv_i)
+  -s\ell_i^*(-\alpha_i )
+  -s \wv(\alphav)^T \xv_i \alpha_i
+\right)
++
+  \frac1n 
+ \sum_{i =1}^n 
+ \left(  s \wv(\alphav)^T \xv_i
+( \alpha_i-u_i )
+ -
+\frac{\mu}{2}
+(1-s)s (u_i -\alpha_i)^2
+\right)
+\\&\qquad  +\frac1n  
+\wv(\alphav)^T A  s (\uv  - \alphav )
+ + \sum_{k=1}^K 
+\frac\lambda2
+ \sigma'   \Big\|\frac1{\lambda n} A \vsubset{s (\uv  - \alphav )}{k}\Big\|^2  
+\\
+&\overset{\eqref{eq:asdfjiwjfeojawfa}}{=}
+ -s G(\alphav)
+-
+\frac{\mu}{2}
+(1-s)s 
+  \frac1n 
+ \sum_{i =1}^n 
+ \|\uv-\alphav\|^2 
+ + 
+\frac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+\sum_{k=1}^K   
+  \| A \vsubset{  (\uv  - \alphav )}{k}\|^2.
+  \tagthis 
+  \label{eq:asdfafdas}
+ \end{align*}
+Now, the claimed improvement bound
+\eqref{eq:lemma:dualDecrease_VS_dualityGap}
+follows
+by plugging 
+\eqref{eq:asdfafdas}
+into \eqref{eq:Afasfwafewaef}.
+
+
+
+
+\subsection{Proof of Lemma 
+\ref{lemma:BoundOnR}}
+
+
+For general convex functions, the strong convexity parameter is 
+$\mu=0$, and hence the definition of $\vc{R}{t}$ becomes
+\begin{align*} 
+\vc{R}{t}
+\overset{\eqref{eq:defOfR}}{=}
+  \sum _{k=1}^K   
+  \| A \vsubset{  (\vc{\uv} {t} - \vc{\alphav}{t} )}{k}\|^2
+\overset{\eqref{eq:definitionOfSigmaK}}{\leq}   
+\sum _{k=1}^K 
+\sigma_k  
+  \|   \vsubset{  (\vc{\uv} {t} - \vc{\alphav}{t} )}{k}\|^2
+\overset{\mbox{Lemma \ref{lemma:ajvoiewffa}}}{\leq}   
+\sum _{k=1}^K 
+\sigma_k  |\mathcal{P}_k| 4L^2.
+\end{align*}
+
+ 
+\subsection{Proof of Theorem \ref{thm:convergenceNonsmooth}}
+
+ 
+At first let us estimate expected change of dual feasibility. By using the main Lemma \ref{lem:basicLemma}, we have
+\begin{align*} 
+ \Exp[\bD(\alphav^*)-\bD(\vc{\alphav}{t+1})]
+ &=
+\Exp[\bD(\alphav^*)-\bD(\vc{\alphav}{t+1})+\bD(\vc{\alphav}{t})-\bD(\vc{\alphav}{t})]
+\\
+&
+\overset{\eqref{eq:lemma:dualDecrease_VS_dualityGap}
+}{=}
+\bD(\alphav^*)-\bD(\vc{\alphav}{t})
+-\gamma
+(1-\Theta)  
+ s G(\vc{\alphav}{t})
++
+\gamma
+(1-\Theta)
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+\vc{R}{t}
+\\
+&
+\overset{\eqref{eq:gap}
+}{=}
+\bD(\alphav^*)-\bD(\vc{\alphav}{t})
+-\gamma
+(1-\Theta)
+   s  (\bP(\wv(\vc{\alphav}{t}))-\bD(\vc{\alphav}{t}))
++
+\gamma
+(1-\Theta)  \tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+\vc{R}{t} 
+\\
+&\leq
+\bD(\alphav^*)-\bD(\vc{\alphav}{t})
+-\gamma
+(1-\Theta)
+ s  (\bD(\alphav^* )-\bD(\vc{\alphav}{t}) )
++
+\gamma
+(1-\Theta) 
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+\vc{R}{t} \\
+&
+\overset{\eqref{eq:asfjoewjofa}}{\leq} 
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right) 
+   (\bD(\alphav^* )-\bD(\vc{\alphav}{t}))
++
+\gamma
+(1-\Theta) 
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+4L^2  \sigma.
+\tagthis 
+\label{eq:asoifejwofa}
+\end{align*}
+ Using
+\eqref{eq:asoifejwofa}
+recursively we have 
+ \begin{align*} 
+ \Exp[\bD(\alphav^*)-\bD(\vc{\alphav}{t})]
+ &=
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right)^t 
+   (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
++
+\gamma
+(1-\Theta) 
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+4L^2  \sigma 
+\sum_{j=0}^{t-1}
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right)^j
+\\
+&=
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right)^t 
+   (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
++
+\gamma
+(1-\Theta) 
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+4L^2  \sigma 
+\frac{1-\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right)^t}
+     { 
+  \gamma
+(1-\Theta)
+   s }
+\\
+&\leq
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right)^t 
+   (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
++
+ s
+\frac{4L^2  \sigma   \sigma'}{2\lambda n^2}. 
+\tagthis
+\label{eq:asfwefcaw}  
+ \end{align*}
+Choice of 
+$s=1$ and $t= t_0:= \max\{0,\lceil  
+\frac1{\gamma (1-\Theta)}
+\log(
+ 2\lambda n^2 (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
+  / (4 L^2 \sigma \sigma')
+  )
+ \rceil\}$
+will lead to 
+\begin{align}\label{eq:induction_step1}
+  \Exp[\bD(\alphav^*)-\bD(\vc{\alphav}{t})]
+%-----------------------------------------------------------------
+ &\leq  
+\left( 
+ 1-\gamma
+(1-\Theta)  
+\right)^{t_0}
+  (\bD(\alphav^* )-\bD(\vc{\alphav}{0}))
++ 
+\frac{4L^2  \sigma   \sigma'}{2\lambda n^2}
+\leq 
+\frac{4L^2  \sigma   \sigma'}{2\lambda n^2}
++
+\frac{4L^2  \sigma   \sigma'}{2\lambda n^2}
+=
+\frac{4L^2  \sigma   \sigma'}{\lambda n^2}.
+\end{align} 
+Now, we are going to show that 
+\begin{align}
+\label{eq:expectationOfDualFeasibility}
+\forall t\geq t_0 :  \Exp[\bD(\alphav^* )-\bD(\vc{\alphav}{t})]
+&\leq 
+\frac{4L^2  \sigma   \sigma'}{\lambda n^2( 1+ \frac12  \gamma (1-\Theta)  (t-t_0))}.
+%\\& \leq \frac{2 \beta G}%{\lambda (2n+b(t-t_0))}.
+\end{align}
+Clearly, \eqref{eq:induction_step1} implies that \eqref{eq:expectationOfDualFeasibility} holds for $t=t_0$.
+Now imagine that it holds for any $t\geq t_0$ then we show that it also has to hold for $t+1$. 
+Indeed, using 
+\begin{equation}
+\label{eq:asdfjoawjdfas}
+s=
+\frac{1}
+ {1+ \frac12 \gamma (1-\Theta) (t-t_0)} \in [0,1]
+\end{equation} 
+  we obtain
+\begin{align*}
+\Exp[
+\bD(\alphav^* )-\bD(\vc{\alphav}{t+1})]
+&\overset{\eqref{eq:asoifejwofa}
+}{\leq}
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right) 
+   (\bD(\alphav^* )-\bD(\vc{\alphav}{t}))
++
+\gamma
+(1-\Theta) 
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+4L^2  \sigma
+\\
+&\overset{\eqref{eq:expectationOfDualFeasibility}
+}{\leq}
+\left( 
+ 1-\gamma
+(1-\Theta)
+   s
+\right) 
+   \frac{4L^2  \sigma   \sigma'}{\lambda n^2( 1+ \frac12  \gamma (1-\Theta)  (t-t_0))}
++
+\gamma
+(1-\Theta) 
+\tfrac{\sigma'}{2\lambda }
+(\frac s{  n})^2
+4L^2  \sigma
+\\
+&
+\overset{\eqref{eq:asdfjoawjdfas}}{=}
+\frac{4L^2  \sigma   \sigma'}
+     {\lambda n^2}
+\left( 
+\frac{
+1+ \frac12 \gamma (1-\Theta) (t-t_0)
+-\gamma
+(1-\Theta)
++
+\gamma
+(1-\Theta) 
+\tfrac{1}{2}
+}
+ {(1+ \frac12 \gamma (1-\Theta) (t-t_0))^2}
+\right)
+\\
+&=
+\frac{4L^2  \sigma   \sigma'}
+     {\lambda n^2}
+\underbrace{\left( 
+\frac{
+1+ \frac12 \gamma (1-\Theta) (t-t_0)
+-\frac12 \gamma
+(1-\Theta)
+}
+ {(1+ \frac12 \gamma (1-\Theta) (t-t_0))^2}
+\right)}_{D}.
+\end{align*}
+Now, we will upperbound $D$ as follows
+\begin{align*}
+D&=
+\frac1
+{1+ \frac12 \gamma (1-\Theta) (t+1-t_0)}
+\underbrace{
+\frac{
+(1+ \frac12 \gamma (1-\Theta) (t+1-t_0))
+(1+ \frac12 \gamma (1-\Theta) (t-1-t_0))
+}
+ {(1+ \frac12 \gamma (1-\Theta) (t-t_0))^2}}_{\leq 1}
+ \\
+&\leq  
+\frac1
+{1+ \frac12 \gamma (1-\Theta) (t+1-t_0)},
+\end{align*}
+where in the last inequality we have used the fact that geometric mean
+ is less or equal to arithmetic mean. 
+ 
+If $\overline \alphav$ is defined as \eqref{eq:averageOfAlphaDefinition}
+then we obtain that
+\begin{align*}
+\Exp[\calG(\overline\alphav)] &=  
+ \Exp\left[\calG\left(\sum_{t=T_0}^{T-1} \tfrac1{T-T_0} \vc{\alphav}{t}\right)\right]
+ \leq
+  \tfrac1{T-T_0} \Exp\left[\sum_{t=T_0}^{T-1} \calG\left( \vc{\alphav}{t}\right)\right]
+\\
+&
+\overset{
+\eqref{eq:lemma:dualDecrease_VS_dualityGap}
+,\eqref{eq:asfjoewjofa}
+}{\leq}
+  \tfrac1{T-T_0} \Exp\left[\sum_{t=T_0}^{T-1} 
+\left(
+\frac1{\gamma
+(1-\Theta)
+ s}
+(
+\bD(\vc{\alphav}{t+1})
+-
+\bD(\vc{\alphav}{t})
+ )
+ +
+\tfrac{4L^2 \sigma \sigma' s}{2\lambda n^2 }
+\right)  
+  \right]
+\\  
+ &=
+\frac1{\gamma
+(1-\Theta)
+ s}
+   \frac1{T-T_0} 
+   \Exp\left[
+\bD(\vc{\alphav}{T})
+-
+\bD(\vc{\alphav}{T_0})
+  \right] 
++\tfrac{4L^2 \sigma \sigma' s}{2\lambda n^2 }  
+\\  
+ &\leq
+\frac1{\gamma
+(1-\Theta)
+ s}
+   \frac1{T-T_0} 
+   \Exp\left[
+\bD(\alphav^*)
+-
+\bD(\vc{\alphav}{T_0})
+  \right] 
++\tfrac{4L^2 \sigma \sigma' s}{2\lambda n^2 }.  
+\tagthis \label{eq:askjfdsanlfas}
+  \end{align*}
+Now, if $T\geq \lceil
+\frac1{\gamma (1-\Theta)}\rceil+T_0$ such that $T_0\geq t_0$
+we obtain
+\begin{align*}
+\Exp[\calG(\overline\alphav)] 
+%-----------------------------------------------------
+&\overset{\eqref{eq:askjfdsanlfas}
+,\eqref{eq:expectationOfDualFeasibility}
+}{\leq}
+\frac1{\gamma
+(1-\Theta)
+ s}
+   \frac1{T-T_0} 
+\left(
+\frac{4L^2  \sigma   \sigma'}{\lambda n^2( 1+ \frac12  \gamma (1-\Theta)  (T_0-t_0))}
+\right)
++\frac{4L^2 \sigma \sigma' s}{2\lambda n^2 }
+\\
+&=
+\frac{
+4L^2  \sigma   \sigma'}{\lambda n^2}
+\left(
+\frac1{\gamma
+(1-\Theta)
+ s}
+   \frac1{T-T_0} 
+\frac{1}{ 1+ \frac12  \gamma (1-\Theta)  (T_0-t_0)}
++\frac{  s}{2 }
+\right). 
+\tagthis
+\label{eq:fawefwafewa}
+\end{align*}
+Choosing 
+\begin{equation}
+\label{eq:afskoijewofaw}
+s=\frac{1}{(T-T_0) \gamma (1-\Theta)} \in [0,1]
+\end{equation}
+gives us
+\begin{align*}
+\Exp[\calG(\overline\alphav)] 
+&
+\overset{\eqref{eq:fawefwafewa},
+\eqref{eq:afskoijewofaw}}{\leq}
+\frac{
+4L^2  \sigma   \sigma'}{\lambda n^2}
+\left(
+\frac{1}{ 1+ \frac12  \gamma (1-\Theta)  (T_0-t_0)}
++\frac{1}{(T-T_0) \gamma (1-\Theta)} \frac{  1}{2 }
+\right). \tagthis
+\label{eq:afsjweofjwafea}
+\end{align*}
+To have right hand side of
+\eqref{eq:afsjweofjwafea}
+smaller then 
+$\epsilon_\calG$
+it is sufficient to choose
+$T_0$ and $T$ such that
+\begin{eqnarray}
+\label{eq:sfadwafeewafa}
+\frac{4L^2  \sigma   \sigma'}{\lambda n^2}
+\left(
+\frac{1}{ 1+ \frac12  \gamma (1-\Theta)  (T_0-t_0)}
+\right)
+&\leq & \frac12 \epsilon_\calG,
+\\
+\label{eq:sfadwafeewafa2}
+\frac{4L^2  \sigma   \sigma'}{\lambda n^2}
+\left(
+\frac{1}{(T-T_0) \gamma (1-\Theta)} \frac{  1}{2 }
+\right)
+&\leq & \frac12 \epsilon_\calG.
+\end{eqnarray}
+Hence of 
+if
+\begin{eqnarray*}
+t_0+
+\frac{2}{ \gamma (1-\Theta) }
+\left(
+\frac
+{8L^2  \sigma   \sigma'}
+{\lambda n^2 \epsilon_\calG}
+-1
+\right)
+&\leq & 
+ T_0 
+,
+\\
+T_0
++
+\frac
+{4L^2  \sigma   \sigma'}
+{\lambda n^2 \epsilon_\calG
+\gamma (1-\Theta)}
+&\leq &  T,  
+\end{eqnarray*}
+then 
+\eqref{eq:sfadwafeewafa}
+and
+\eqref{eq:sfadwafeewafa2}
+are satisfied.
+  
+\comment {
+\subsection{Proof of Theorem \ref{thm:convergenceSmoothCase}
+}
+If the function $\ell_i(.)$ is $(1/\mu)$-smooth then $\ell_i^*(.)$ is $\mu$-strongly convex with respect to the
+$\|\cdot\|$ norm.
+From \eqref{eq:defOfR}
+we have
+\begin{align*}
+\vc{R}{t}&
+\overset{\eqref{eq:defOfR}}{=}
+-
+\tfrac{ \lambda\mu n (1-s)}{\sigma' s }
+   \|\vc{\uv}{t}-\vc{\alphav}{t}\|^2 
++ 
+ {\sum}_{k=1}^K   
+  \| A \vsubset{  (\vc{\uv}{t}  - \vc{\alphav}{t} )}{k}\|^2
+\\%-----------------
+&
+\overset{\eqref{eq:definitionOfSigmaK}}{\leq}  
+-
+\tfrac{ \lambda\mu n (1-s)}{\sigma' s }
+   \|\vc{\uv}{t}-\vc{\alphav}{t}\|^2 
++ 
+ {\sum}_{k=1}^K   
+ \sigma_k
+  \|  \vsubset{   \vc{\uv}{t}  - \vc{\alphav}{t}  }{k}\|^2
+\\
+&\leq
+-
+\tfrac{ \lambda\mu n (1-s)}{\sigma' s }
+   \|\vc{\uv}{t}-\vc{\alphav}{t}\|^2 
++
+\sigma_{\max} 
+ {\sum}_{k=1}^K   
+  \|  \vsubset{   \vc{\uv}{t}  - \vc{\alphav}{t}  }{k}\|^2
+\\
+&=
+\left(
+-
+\tfrac{ \lambda\mu n (1-s)}{\sigma' s }
++\sigma_{\max}
+\right)
+   \|\vc{\uv}{t}-\vc{\alphav}{t}\|^2.\tagthis
+   \label{eq:afjfocjwfcea} 
+\end{align*}
+ If we plug 
+ \begin{equation}
+ s=
+  \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'}\in [0,1]
+\label{eq:fajoejfojew}
+\end{equation} 
+into
+\eqref{eq:afjfocjwfcea}
+we obtain that
+$\forall t: \vc{R}{t}\leq 0$.
+Putting the  same $s$
+into
+\eqref{eq:lemma:dualDecrease_VS_dualityGap}
+will give us
+\begin{align*}
+&\Exp[
+\bD(\vc{\alphav}{t+1})
+-
+\bD(\vc{\alphav}{t})
+ ]
+\overset{\eqref{eq:lemma:dualDecrease_VS_dualityGap}
+,\eqref{eq:fajoejfojew}}{\geq}
+\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'} G(\vc{\alphav}{t})
+\geq
+\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'} \bD(\alphav^*)-\bD(\vc{\alphav}{t}).
+\tagthis
+\label{eq:fasfawfwaf}
+\end{align*}
+Using the fact that
+$\Exp[\bD(\vc{\alphav}{t+1})-\bD(\vc{\alphav}{t})]
+=\Exp[\bD(\vc{\alphav}{t+1})-\bD(\alphav^*)]
++\bD(\alphav^*)-\bD(\vc{\alphav}{t})
+$
+we have 
+\begin{align*}
+\Exp[\bD(\vc{\alphav}{t+1})-\bD(\alphav^*)]
++\bD(\alphav^*)-\bD(\vc{\alphav}{t})
+\overset{
+\eqref{eq:fasfawfwaf}}
+{
+\geq
+}
+\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'} \bD(\alphav^*)-\bD(\vc{\alphav}{t})
+\end{align*}
+which is equivalent with
+\begin{align*}
+\Exp[\bD(\alphav^*)-\bD(\vc{\alphav}{t+1})]
+\leq 
+\left(
+1-\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'}\right)
+\bD(\alphav^*)-\bD(\vc{\alphav}{t}).
+\tagthis \label{eq:affpja}
+\end{align*}
+Therefore if we denote by $\vc{\epsilon_\bD}{t} = \bD(\alphav^*)-\bD(\vc{\alphav}{t})$
+we have that
+\begin{align*}
+ \Exp[\vc{\epsilon_\bD}{t}] 
+ \overset{\eqref{eq:affpja}}{\leq}   \left(
+ 1-\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'}
+   \right)^t \vc{\epsilon_\bD}{0}
+\overset{\eqref{eq:afjfjaoefvcwa}}{\leq}
+\left(
+ 1-\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'}
+   \right)^t
+\leq \exp\left(-t \gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'}
+     \right).
+\end{align*}
+The right hand side will be smaller than some $\epsilon_\bD$ if 
+$$
+ t   
+    \geq 
+\frac{1}
+   {\gamma
+(1-\Theta)}
+\frac
+{\lambda\mu n+
+\sigma_{\max} \sigma'}
+{ \lambda\mu n }
+    \log \frac1{\epsilon_\bD}.
+$$
+Moreover, to bound the duality gap, we have
+\begin{align*}
+\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'} G(\vc{\alphav}{t})
+&
+\overset{
+\eqref{eq:fasfawfwaf}
+}{\leq}
+\Exp[
+\bD(\vc{\alphav}{t+1})
+-
+\bD(\vc{\alphav}{t})
+ ]
+\leq 
+\Exp[
+\bD(\alphav^*)
+-
+\bD(\vc{\alphav}{t})
+ ]. 
+\end{align*}
+Therefore  $\calG(\vc{\alphav}{t})\leq 
+\frac1{
+\gamma
+(1-\Theta)}
+ \frac      {\lambda\mu n+
+\sigma_{\max} \sigma'} 
+{ \lambda\mu n }    \vc{\epsilon_\bD}{t}$.  
+Hence if $\epsilon_\bD \leq 
+\gamma
+(1-\Theta)
+ \frac{ \lambda\mu n }
+      {\lambda\mu n+
+\sigma_{\max} \sigma'} 
+ \epsilon_\calG $
+then $\calG(\vc{\alphav}{t})\leq \epsilon_\calG$.
+Therefore
+after 
+$$
+ t   
+    \geq 
+\frac{1}
+   {\gamma
+(1-\Theta)}
+\frac
+{\lambda\mu n+
+\sigma_{\max} \sigma'}
+{ \lambda\mu n }
+    \log 
+\left(
+\frac{1}
+   {\gamma
+(1-\Theta)}
+\frac
+{\lambda\mu n+
+\sigma_{\max} \sigma'}
+{ \lambda\mu n }
+    \frac1{\epsilon_\calG}
+    \right) 
+$$
+iterations we have obtained a duality gap less than $\epsilon_\calG$.
+ 
+
+
+\subsection{Proof of Theorem \ref{thm:LocalSDCA_smooth2}}
+
+Because $\ell_i$ are $(1/\mu)$-smooth then 
+functions
+$\ell_i^*$ are $\mu$
+strongly convex with respect to the norm $\|\cdot\|$.
+The proof is based on
+techniques developed in recent coordinate descent papers, including
+\cite{richtarik,
+richtarik2013distributed,richtarikBigData,TTR:IMPROVRED,
+marecek2014distributed,APPROX,lu2013complexity,fercoq2014fast,ALPHA,QUARTZ} (Efficient accelerated variants were considered in \cite{APPROX,  ASDCA}).
+
+First, let us define the
+function
+$F(\zetav): \R^{n_k} \to \R$
+as 
+$F(\zetav) := -\Ggk( 
+\sum_{i \in \mathcal{P}_k} \zeta_i \ev_i; \wv)
+$.  This function can be written in two parts
+$F(\zetav) = \Phi(\zetav) + f(\zetav)$.
+The first part
+denoted by 
+$\Phi(\zetav)
+ =\frac1n\sum_{i \in \mathcal{P}_k} 
+\ell_i^*(-\alpha_i - \zeta_i)$
+is strongly convex
+with convexity parameter
+$\frac{\mu}{n}$
+with respect to the standard Euclidean norm.
+In our application, we think of the $\zetav$ variable collecting the local dual variables $\vsubset{\Delta \alphav}{k}$.
+
+The second part
+we will denote by
+$f(\zetav)
+ = 
+  \frac1K 
+\frac{\lambda}{2}
+\|\wv(\alphav)\|^2
++\frac1n
+\sum_{i \in \mathcal{P}_k}
+\wv(\alphav)^T \xv_i \zeta_i
++
+\frac\lambda2
+ \sigma'  
+\frac1{\lambda^2 n^2} 
+ \| \sum_{i \in \mathcal{P}_k}  \xv_i \zeta_i \|^2 
+ $.
+It is easy to show
+that the gradient of $f$ is coordinate-wise Lipschitz  
+ continuous
+with Lipschitz constant
+$ \frac{\sigma'}{\lambda n^2} r_{\max}$
+with respect to the standard Euclidean norm.
+
+Following the
+ proof of Theorem 20 in \cite{richtarikBigData}, 
+we obtain that
+\begin{align*}
+\Exp[\Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( 
+\vc{
+  \vsubset{\Delta \alphav}{k}
+  }{h+1}; \wv)
+  ]
+&\leq 
+\left(
+1-\frac1{n_k}
+ \frac{1+\frac{\mu n \lambda}{\sigma' r_{\max}}}
+      {\frac{\mu n \lambda}{\sigma' r_{\max}}}
+\right)
+\left(
+\Ggk( 
+   \vsubset{\Delta \alphav^*}{k};\wv)
+-   \Ggk( 
+\vc{
+  \vsubset{\Delta \alphav}{k}
+  }{h}; \wv)
+\right) 
+\\
+&=
+\left(
+1-\frac1{n_k}
+ \frac
+      {    \lambda n \mu }
+      {\sigma' r_{\max}+ \lambda n \mu }
+\right)
+\left(
+\Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( 
+\vc{
+  \vsubset{\Delta \alphav}{k}
+  }{h}; \wv)
+\right). 
+\end{align*}
+Over all steps up to step $h$, this gives
+\begin{align*}
+\Exp[\Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( 
+\vc{
+  \vsubset{\Delta \alphav}{k}
+  }{h}; \wv)
+  ]
+&\leq 
+\left(
+1-\frac1{n_k}
+ \frac
+      {    \lambda n \mu }
+      {\sigma' r_{\max}+ \lambda n \mu }
+\right)^h
+\left(
+\Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk({\bf 0}; \wv)
+\right). 
+\end{align*}
+ Therefore, choosing 
+ $H$ as in the assumption of our Theorem, given in Equation
+ \eqref{eq:asjfwjfdwafcea},
+ we are guaranteed that
+ $\left(
+1-\frac1{n_k}
+ \frac
+      {    \lambda n \mu }
+      {\sigma' r_{\max}+ \lambda n \mu }
+\right)^H \leq \Theta$, as desired. 
+
+
+\subsection{Proof of Theorem \ref{thm:LocalSDCA_smooth1}
+}
+Similarly as in the 
+proof of Theorem 
+\ref{thm:LocalSDCA_smooth2} 
+we define a composite function $F(\zetav)
+= f(\zetav)+\Phi(\zetav) $.
+However, in this case functions
+$\ell_i^*$ are not guaranteed to be strongly convex.
+However, the first part has still a coordinate-wise Lipschitz continuous gradient with constant
+$ \frac{\sigma'}{\lambda n^2} r_{\max}$
+with respect to the standard Euclidean norm.
+Therefore from Theorem 3 in \cite{TTR:IMPROVRED}
+we have that
+\begin{align*}
+\Exp[\Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( 
+\vc{
+  \vsubset{\Delta \alphav}{k}
+  }{h}; \wv)
+  ]
+&\leq 
+ \frac{n_k}{n_k+h}
+ \left(
+ \Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( {\bf 0}; \wv)
+  +\frac12 \frac{\sigma'r_{\max}}{\lambda n^2}  \| \vsubset{\Delta \alphav^*}{k}\|^2
+ \right).
+ \tagthis
+ \label{eq:afewfew}
+\end{align*}
+ Now, choice 
+ of $h=H$ from 
+ \eqref{eq:H_convexLoss}
+ is sufficient to have
+ the right hand side of
+ \eqref{eq:afewfew} to be 
+ $\leq  
+\Theta \big(\Ggk( 
+   \vsubset{\Delta \alphav^*}{k}; \wv)
+-   \Ggk( {\bf 0}; \wv) \big)$.
+
+} %end of comment
+
+
+ 
+\end{document}
+
+
+\begin{table}[htbp]
+  \centering
+  \caption{$\sigma'_{\min}/\gamma K$}
+    \begin{tabular}{rrrrrrr}
+    \toprule
+    K     & 1     & 2     & 4     & 8     & 16    & 32 \\
+    \midrule
+    a1a   & 1.0000 & 0.9998 & 0.9986 & 0.9968 & 0.9927 & 0.9840 \\
+    svmguide3 & 1.0000 & 0.9997 & 0.9995 & 0.9989 & 0.9986 & 0.9973 \\
+    svmguide1.t & 1.0000 & 1.0000 & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+    splice\_scale & 1.0000 & 0.9668 & 0.9121 & 0.8008 & 0.6770 & 0.5243 \\
+    a3a   & 1.0000 & 0.9997 & 0.9993 & 0.9982 & 0.9964 & 0.9919 \\
+    \midrule
+    K     & 4     & 8     & 16    & 32    & 64    & 128 \\
+    \midrule
+    w5a   & 0.9880 & 0.9714 & 0.9435 & 0.8552 & 0.7978 & 0.7178 \\
+    gisette\_scale & 0.9998 & 0.9996 & 0.9992 & 0.9984 & 0.9966 & 0.9929 \\
+    mushrooms & 0.9189 & 0.9132 & 0.9057 & 0.8995 & 0.8946 & 0.8808 \\
+    \midrule
+    K     & 16    & 32    & 64    & 128   & 256   & 512 \\
+    \midrule
+    news  & 0.9252 & 0.8878 & 0.8496 & 0.7966 & 0.7227 & 0.6236 \\
+    real-sim & 0.6624 & 0.6206 & 0.5737 & 0.4996 & 0.4181 & 0.3300 \\
+    rcv1  & 0.9185 & 0.8444 & 0.7258 & 0.5914 & 0.4490 & 0.3340 \\
+    w1a.t & 0.9570 & 0.8738 & 0.8163 & 0.7791 & 0.7331 & NaN \\
+    \midrule
+    K     & 256   & 512   & 1024  & 2048  & 4096  & 8192 \\
+    \midrule
+    covtype & 1.0000 & 1.0000 & 0.9999 & 0.9999 & 0.9995 & 0.9958 \\
+    webspam & 1.0000 & 0.9998 & 0.9994 & 0.9999 & 0.9994 & 0.9989 \\
+    \bottomrule
+    \end{tabular}%
+  \label{tab:sigma2}%
+\end{table}%
+
+
+
+
+\begin{table}[htbp]
+  \centering
+  \caption{$(1/K)/(\sigma/n^2)$}
+    \begin{tabular}{rrrrrrr}
+    \toprule
+    K     & 1     & 2     & 4     & 8     & 16    & 32 \\
+    \midrule
+    a1a   & 2.23  & 2.23  & 2.23  & 2.22  & 2.21  & 2.19 \\
+    covtype & 1.12  & 1.11  & 1.11  & 1.09  & 1.09  & 1.08 \\
+    kdda  & 17.06 & 16.78 & 16.45 & 16.03 & 15.63 & 14.88 \\
+    news  & 17.08 & 16.78 & 16.46 & 16.06 & 15.48 & 14.93 \\
+    url   & 1.54  & 1.54  & 1.53  & 1.53  & 1.53  & 15.32 \\
+    web/web & 18.76 & 18.73 & 18.80 & 18.66 & 18.94 & 18.38 \\
+    svmguide3 & 11.75 & 11.71 & 11.68 & 11.57 & 11.36 & 10.78 \\
+    svmguide1.t & 12.52 & 11.79 & 11.79 & 11.79 & 11.79 & 11.57 \\
+    splice\_scale & 29.94 & 29.07 & 27.78 & 25.51 & 21.55 & 16.45 \\
+    a3a   & 2.23  & 2.23  & 2.23  & 2.23  & 2.22  & 2.20 \\
+    w5a   & 39.53 & 39.06 & 38.46 & 35.71 & 34.72 & 31.25 \\
+    gisette\_scale & 1.43  & 1.43  & 1.43  & 1.43  & 1.42  & 1.42 \\
+    real-sim & 78.53 & 70.23 & 60.94 & 54.57 & 48.36 & 45.92 \\
+    rcv1\_train & 45.11 & 44.78 & 44.00 & 42.89 & 40.16 & 34.84 \\
+    w1a.t & 7.62  & 7.53  & 7.44  & 6.51  & 6.26  & 5.82 \\
+    mushrooms & 6.72  & 6.44  & 6.43  & 6.38  & 6.31  & 6.25 \\
+ \bottomrule
+    \end{tabular}%
+  \label{tab:sigma1}%
+\end{table}%
+\begin{table}[htbp]
+  \centering
+  \caption{$K\gamma/\sigma'_{\min} $}
+    \begin{tabular}{rrrrrrr}
+    \toprule
+    K     & 1     & 2     & 4     & 8     & 16    & 32 \\
+    \midrule
+    a1a   & 1.0000 & 1.0002 & 1.0014 & 1.0032 & 1.0074 & 1.0162 \\
+    svmguide3 & 1.0000 & 1.0003 & 1.0005 & 1.0011 & 1.0014 & 1.0027 \\
+    svmguide1.t & 1.0000 & 1.0000 & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+    splice\_scale & 1.0000 & 1.0344 & 1.0964 & 1.2488 & 1.4770 & 1.9072 \\
+    a3a   & 1.0000 & 1.0003 & 1.0007 & 1.0018 & 1.0036 & 1.0082 \\
+    \midrule
+    K     & 4     & 8     & 16    & 32    & 64    & 128 \\
+    \midrule
+    w5a   & 1.0121 & 1.0294 & 1.0599 & 1.1694 & 1.2534 & 1.3931 \\
+    gisette\_scale & 1.0002 & 1.0004 & 1.0008 & 1.0016 & 1.0034 & 1.0071 \\
+    mushrooms & 1.0883 & 1.0950 & 1.1042 & 1.1117 & 1.1179 & 1.1354 \\
+    \midrule
+    K     & 16    & 32    & 64    & 128   & 256   & 512 \\
+    \midrule
+    news  & 1.0808 & 1.1264 & 1.1770 & 1.2553 & 1.3838 & 1.6036 \\
+    real-sim & 1.5096 & 1.6114 & 1.7430 & 2.0018 & 2.3918 & 3.0307 \\
+    rcv1  & 1.0887 & 1.1842 & 1.3778 & 1.6908 & 2.2273 & 2.9938 \\
+    w1a.t & 1.0449 & 1.1445 & 1.2250 & 1.2835 & 1.3641 & Nan \\
+    \midrule
+    K     & 256   & 512   & 1024  & 2048  & 4096  & 8192 \\
+    \midrule
+    covtype & 1.0000 & 1.0000 & 1.0001 & 1.0001 & 1.0005 & 1.0042 \\
+    webspam & 1.0000 & 1.0002 & 1.0006 & 1.0001 & 1.0006 & 1.0011 \\
+ \bottomrule
+    \end{tabular}%
+  \label{tab:sigma2}%
+\end{table}%
+\clearpage
+\part{WORK IN PROGRESS!!!}
+
+ 
+
+
+\begin{lemma}
+\label{lemma:primaltosubproblem}
+Let $k\in [K]$, $\alphav \in \R^n$
+and let us denote by 
+$\wv = \wv(\alphav)$.
+Then consider following optimization problem
+\begin{equation}
+\label{eq:localprimal}
+\min_{\wv_k\in \mathbb R^d} \Big\{ \mathcal H_k(\wv_k;  \wv)\eqdef \frac{1}{n} \sum_{i\in \mathcal P_k} \ell_i( ( \wv + \wv_k)^T \xv_i)  + \frac{\lambda}{2\sigma '} \| \wv_k\|^2 - \frac1K \frac{\lambda}{2} \|\wv\|^2+ \lambda \wv^T (\wv+ \wv_k) \Big\}.
+\end{equation}
+Then the dual 
+is given by
+ \eqref{eq:subproblem}.
+ Moreover, for any feasible
+ $\vsubset{\Delta \alphav}{k}$
+ we can fine a feasible point
+ $\wv_k$ as follows
+ \begin{equation}
+ \wv_k = \wv_k (\vsubset{\Delta \alphav}{k}) =
+  \frac{\sigma'}{\lambda n}
+   A \vsubset{\Delta \alphav}{k}. 
+\end{equation} 
+Moreover, the strong duality holds, i.e.
+\begin{equation}
+\mathcal H_k(\wv_k(\vsubset{\Delta \alphav}{k});  \wv(\alphav))
+ - 
+\Ggk(  \vsubset{\Delta \alphav}{k}; \wv) 
+\geq 
+\mathcal H_k(\wv_k(\vsubset{\Delta \alphav^*}{k});  \wv(\alphav))
+ - 
+\Ggk(  \vsubset{\Delta \alphav^*}{k}; \wv) 
+ = 0.
+\end{equation} 
+\end{lemma}
+
+
+\section{Proof of Lemma \ref{lemma:primaltosubproblem}}
+\begin{proof}
+The dual problem is derived by plugging in the definition of the conjugate function $\ell_i(( \wv + \wv_k)^T \xv_i ) = \max_{\alpha_i} -(\alpha_i+ (\vsubset{\Delta \alphav}{k})_i) ( \wv+ \wv_k)^T \xv_i - \ell^*_i (-\alpha_i - (\vsubset{\Delta \alphav}{k})_i)$, which gives 
+\begin{align}
+&\min_{\wv_k\in\mathbb R^d}\quad  \frac{1}{n} \sum_{i\in \mathcal P_k} \max_{\alpha_i} \Big( -(\alpha_i+ (\vsubset{\Delta \alphav}{k})_i) ( \wv+ \wv_k)^T \xv_i - l^*_i (-\alpha_i - (\vsubset{\Delta \alphav}{k})_i)\Big)   \notag\\
+& \quad\quad\quad+ \frac{\lambda}{2\sigma '} \| \wv_k\|^2- \frac1K \frac{\lambda}{2} \|\wv\|^2+  \lambda \wv^T (\wv+ \wv_k)  \notag\\
+= & \frac{1}{n} \sum_{i\in\mathcal{P}} \max_{\alpha_i} - l^*_i (-\alpha_i - (\vsubset{\Delta \alphav}{k})_i)- \frac1K \frac{\lambda}{2} \|\wv\|^2 \notag\\
+&\quad\quad\quad+ \min_{\wv_k\in\mathbb R^d} \Big[ \sum_{i \in \mathcal P_k} ( - \frac{1}{n}( (\vsubset{\Delta \alphav}{k})_i) ( \wv+ \wv_k)^T \xv_i)   + \frac{\lambda}{2\sigma '} \| \wv_k\|^2 \Big] \notag\\
+= & \max_{\Delta\alphav_{[k]}} \Big\{\frac{1}{n} \sum_{i \in \mathcal P_k} - l^*_i (-\alpha_i - (\vsubset{\Delta \alphav}{k})_i) - \frac1K \frac{\lambda}{2} \|\wv\|^2 \notag\\
+&\quad\quad\quad +  \min_{\wv_k\in\mathbb R^d} \Big[ \sum_{i \in \mathcal P_k} ( - \frac{1}{n}((\vsubset{\Delta \alphav}{k})_i) ( \wv+ \wv_k)^T \xv_i)   + \frac{\lambda}{2\sigma '} \| \wv_k\|^2 \Big] \Big\}
+\end{align}
+The first order optimality condition for $\wv_k$, by setting its derivative to zero in the inner minimization, can be written as 
+\begin{equation}
+\\wv_k^*  = \frac{\sigma'}{\lambda n} \sum_{i \in \mathcal P_k} ((\vsubset{\Delta \alphav}{k})_i) \xv_i.
+\end{equation}
+Plugging this back, the inner minimization becomes 
+\begin{align}
+& \sum_{i \in \mathcal P_k} ( - \frac{1}{n}((\vsubset{\Delta \alphav}{k})_i) (\overline \wv+ \wv_k)^T \xv_i)  +\frac{\lambda }{2\sigma'} \| \wv_k\|^2  \notag \\
+= & -\frac{1}{n} \wv ^T  A \Delta\alphav_{[k]}  -\sigma' \lambda \|\frac{1}{\lambda n} A \Delta \alphav_{[k]} \|^2 + \frac{\lambda \sigma'}{2} \|\frac{1}{\lambda n} A \Delta \alphav_{[k]} \|^2 \notag\\
+= &  -\frac{1}{n} \wv ^T  A \Delta\alphav_{[k]}  -\frac{\sigma' \lambda}{2} \|\frac{1}{\lambda n} A \Delta \alphav_{[k]} \|^2 
+\end{align}
+Writing the resulting full problem, we obtain precisely the local dual subproblem  \eqref{eq:subproblem} for the $k$-th coordinate block.
+\end{proof}
+
+So, we have the local duality gap
+\begin{align} \label{eq:localgap}
+\mathcal H_k(\wv_k;  \wv) - \Ggk(  \vsubset{\Delta \alphav}{k}; \wv) =  & \frac{1}{n} \Big(\sum_{i\in \mathcal P_k} l_i( ( \wv + \wv_k)^T \xv_i) + \ell_i^*(-\alpha_i - (\vsubset{\Delta \alphav}{k})_i) \notag\\
+& \quad\quad + \frac{\lambda}{\sigma '} \|\wv_k\|^2  + \lambda \wv^T(\wv+ \wv_k) + \frac{\lambda}{\sigma'} \wv_k^T \wv\Big).
+\end{align}
+
+
+
+
+%Observe that the coordinate step performed by an iteration of LOCALSDCA can equivalently be written as 
+%\begin{equation}\label{eq:def_update}
+%\Delta \alpha_i^* = \Delta \alpha_i^*(\alphav_{[k]}^{(h-1)} ) \eqdef \argmax_{\Delta \alpha_i} \big( \Ggk(\Delta\alphav_{[k]};\wv(\alphav_{[k]}^{(h-1)}) ) \big).
+%\end{equation}
+
+\begin{lemma}\label{lm:cite_lemma5}
+Assume that $\ell_i^*$ is $\mu$-strongly convex (where $\mu\geq 0$). Then for all iterations $h$ of LOCALSDCA and any $s\in[0,1]$ we have 
+\begin{equation}
+\mathbf E [\Ggk( \Delta\alphav^{(h)}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)] \geq \frac{s}{n_k} (H_k(\wv_k;  \wv) - \Ggk(  \vsubset{\Delta \alphav^{(h-1)}}{k}; \wv) ) -\frac{s^2}{2\lambda n^2} \Psi^{(h)},
+\end{equation}
+where $\Psi^{(h)} \eqdef \frac{1}{n_k}\sum_{i\in \mathcal P_k}\big(\sigma' \| \xv_i\|^2 -\frac{\lambda n \mu(1-s)}{s} \big) (u^{(h-1)}_i -\alpha_i^{(h-1)})^2$. 
+
+\todo[inline]{
+Chenxin, you have to define what is $u_i$'s here}
+
+
+\end{lemma}
+
+
+\begin{proof}
+Indeed, 
+\begin{align}
+&n\big[\Ggk( \Delta\alphav^{(h)}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)] \notag\\
+=& \underbrace{-\ell_i^*(-\alpha_i-(\vc{\Delta \alphav_{[k]}}{h})_i) - (\vc{\Delta \alphav_{[k]}}{h})_i \wv^T\xv_i - \frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n}(\vc{\Delta \alphav_{[k]}}{h})_i \xv_i \|^2 } _{A} \notag\\
+&  - \underbrace{\Big(-\ell_i^*(-\alpha_i-(\vc{\Delta \alphav_{[k]}}{h-1})_i) - (\vc{\Delta \alphav_{[k]}}{h-1})_i \wv^T\xv_i - \frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n}(\vc{\Delta \alphav_{[k]}}{h-1})_i \xv_i \|^2 \Big)}_{B} .
+\end{align}
+%Let $\vc{\alpha_{i,k}}{h}\eqdef \alpha_i + (\vc{\Delta \alphav_{[k]}}{h})_i$.
+ By the definition of the update $ \delta^*_i$, we have for all $s\in[0,1]$ that 
+\begin{align}
+A =& \max_{\delta_i} \Big\{-\ell_i^*\Big( -\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i - \delta_i^*\ev_i  \Big)  -  \big((\vc{\Delta\alphav_{[k]}}{h-1})_i + \delta^*_i \ev_i\big)\wv^T  \xv_i -\notag\\
+&\quad\quad\quad \frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n} \big((\vc{\Delta\alphav_{[k]}}{h-1})_i + \delta^*_i \ev_i\big) \xv_i \|^2 \Big\} \notag\\
+\geq& -\ell_i^*\Big (-\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i - s( \vc{u_i}{h-1} -\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i\Big) -  (\vc{\Delta\alphav_{[k]}}{h-1})_i \wv^T\xv_i  \notag\\
+&\quad\quad \quad-s\Big(\vc{u}{h-1}_i - \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i\Big ) \wv^T \xv_i  - \notag\\
+& \quad\quad\quad\frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n}\big ( (\vc{\Delta\alphav_{[k]}}{h-1})_i+ s(\vc{u}{h-1}_i- \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i)\big ) \xv_i \|^2  .
+\end{align}
+From the strong convexity we have
+\begin{align}\label{eq:stronglyconv}
+&\ell_i^*\Big (-\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i - s( \vc{u_i}{h-1} -\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i\Big) \notag\\
+\leq &\; sl_i^*(-\vc{u}{h-1}_i) + (1-s)l_i^*(-\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i) -\frac{\mu}{2}s(1-s)(\vc{u}{h-1}_i - \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i) )^2.
+\end{align}
+Hence,
+\begin{align}
+A \overset{\eqref{eq:stronglyconv}}{\geq}& - sl_i^*(-\vc{u}{h-1}_i) - (1-s)l_i^*(-\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i) + \frac{\mu}{2}s(1-s)(\vc{u}{h-1}_i - \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i) )^2 \notag\\
+&\quad - (\vc{\Delta\alphav_{[k]}}{h-1})_i \wv^T\xv_i -s\Big(\vc{u}{h-1}_i - \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i\Big ) \wv^T \xv_i  - \notag\\
+& \quad\quad\quad\frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n}\big ( (\vc{\Delta\alphav_{[k]}}{h-1})_i+ s(\vc{u}{h-1}_i- \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i)\big ) \xv_i \|^2 \notag\\
+=& -s\big( l_i^*(\vc{u_i}{h-1}) + \vc{u_i}{h-1}(\wv+\wv_k)^T \xv_i \big) -\ell_i^*(-\alpha_i-(\vc{\Delta \alphav_{[k]}}{h-1})_i) - (\vc{\Delta \alphav_{[k]}}{h-1})_i \wv^T\xv_i  \notag\\
+& - \frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n}(\vc{\Delta \alphav_{[k]}}{h-1})_i \xv_i \|^2+ \frac{s}{2} \big( \mu(1-s) - \frac{\sigma'}{\lambda n} s\|\xv_i\|^2 \big) (\vc{u}{h-1}_i -\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i)^2 \notag\\
+&+ s\big(\ell_i^* ( \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i) +  (\alpha_i + (\vc{\Delta \alphav_{[k]}}{h-1})_i)\xv_i^T \vc{\wv}{h-1}\big) - \sigma' s \Delta \alpha_k^{(h-1)} (\vc{u_i}{h-1}-\alpha_i- \Delta \alpha_k^{(h-1)}) \|\xv_i\|^2 \notag\\
+=& \underbrace{-s\big( l_i^*(\vc{u_i}{h-1}) + \vc{u_i}{h-1}(\wv+\wv_k)^T \xv_i \big)}_{s\ell((\wv+\wv_k)^T\xv_i )}  \notag\\ &+\underbrace{\Big(-\ell_i^*(-\alpha_i-(\vc{\Delta \alphav_{[k]}}{h-1})_i) - (\vc{\Delta \alphav_{[k]}}{h-1})_i \wv^T\xv_i - \frac{\lambda n}{2}\sigma' \| \frac{1}{\lambda n}(\vc{\Delta \alphav_{[k]}}{h-1})_i \xv_i \|^2\Big)}_{B} \notag\\
+& + \frac{s}{2} \big( \mu(1-s) - \frac{\sigma'}{\lambda n} s\|\xv_i\|^2 \big) (\vc{u}{h-1}_i -\alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i)^2 \notag\\
+&+ s\big(\ell_i^* ( \alpha_i - (\vc{\Delta \alphav_{[k]}}{h-1})_i) +  (\alpha_i + (\vc{\Delta \alphav_{[k]}}{h-1})_i)\xv_i^T \vc{\wv}{h-1}\big) + \sigma' s \Delta \alpha_k^{(h-1)} (\alpha_i + \Delta \alpha_k^{(h-1)}) \|\xv_i\|^2. 
+\end{align}
+Therefore, 
+\begin{align}\label{eq:aacxxsds }
+A-B \geq& s\Big[  \ell((\wv+\wv_k)^T\xv_i ) + \ell_i^* (-\alpha_i-(\vc{\Delta \alphav_{[k]}}{h-1})_i)) +(\alpha_i+(\vc{\Delta \alphav_{[k]}}{h-1})_i) \wv^T \xv_i \notag\\
+&\quad\quad\quad + \sigma' s \Delta \alpha_k^{(h-1)} (\alpha_i + \Delta \alpha_k^{(h-1)}) \|\xv_i\|^2 + \frac{s}{2} \big( \mu(1-s) - \frac{\sigma'}{\lambda n} s\|\xv_i\|^2 \big) (\vc{u}{h-1}_i-\vc{\alphav}{h-1}_i)^2  \Big].
+\end{align}
+By \eqref{eq:localgap}, taking expectation of \eqref{eq:aacxxsds } we obtain
+\begin{align}
+\frac{1}{s} \mathbf E [A-B] \geq &\frac{n}{n_k} \underbrace{\frac{1}{n} \sum_{i\in \mathcal P_k} l_i( ( \wv + \wv_k)^T \xv_i) + \ell_i^*(-\alpha_i - (\vsubset{\Delta \alphav^{(h-1)}}{k})_i) + \frac{\lambda}{\sigma '} \|\wv_k\|^2  + \lambda \wv^T(\wv+ \wv_k) + \frac{\lambda}{\sigma'} \wv_k^T \wv }_{ H_k(\wv_k;  \wv) - \Ggk(  \vsubset{\Delta \alphav^{(h-1)}}{k}; \wv) }  \notag\\
+& -\frac{s}{2\lambda n} \underbrace{\frac{1}{n_k} \sum_{i\in\mathcal P_k} \Big( \sigma' \| \xv_i\|^2- \frac{\lambda n\mu(1-s)}{s} \Big) (\vc{u}{h-1}_i-\vc{\alphav}{h-1}_i)^2}_{\vc{\Psi}{h}}.
+\end{align}
+Therefore, we have obtained the claimed improvement bound 
+\begin{equation}
+\frac{n}{s}\mathbf E [\Ggk( \Delta\alphav^{(h)}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)] \geq \frac{n}{n_k} (H_k(\wv_k;  \wv) - \Ggk(  \vsubset{\Delta \alphav^{(h-1)}}{k}; \wv) )-\frac{s}{2\lambda n} \Psi^{(h)}.
+\end{equation}
+\end{proof}
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+
+To get $H$:
+
+
+\begin{align}
+\mathbf E [\Ggk( \Delta\alphav^{(h)}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)] &\geq \frac{s}{n_k} E [\Ggk( \Delta\alphav^{*}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)]  -\frac{s^2}{2\lambda n^2} \vc{\Psi}{h} \notag\\
+& \geq \frac{s}{n_k} E [\Ggk( \Delta\alphav^{*}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)]  -\frac{s^2}{2\lambda n^2} \sigma' \xv_{max} \frac{1}{n_k} 4L^2,
+\end{align}
+in the last step we use the upper bound $\vc{\Psi}{h} \leq \sigma' \xv_{max} 4L^2 $. Then, let  $r^h =\mathbf E[ \Ggk( \Delta\alphav^{*}_{[k]} ; \wv) -  \Ggk(  \Delta\alphav^{(h-1)}_{[k]}] ; \wv)$,
+\begin{align}
+\mathbf E [r^{h-1} ] - \frac{s}{n_k} \mathbf E [r^{h-1}] \geq \mathbf E [r^h] - \frac{s^2}{2\lambda n^2} \sigma' \xv_{max} 4L^2,
+\end{align}
+from which we can derive,
+\begin{align}\label{eq:aaaaaadasdasdsa}
+r^{h} \leq (1- \frac{s}{n_k} )   r^{h-1}+ (\frac{s}{n})^2 R,
+\end{align}
+where $R = \frac{4L^2 \sigma' \xv_{max}}{2\lambda}$. Then,
+\begin{equation}
+r^h \leq (1-\frac{s}{n_k})^h r^0 + \frac{s}{n^2} n_k R.
+\end{equation}
+Let $ \frac{s}{n^2} n_kR \leq \beta \Theta r_0,$ choose
+\begin{align}
+H \geq \frac{n_k^2 R}{\beta r_0 \Theta n^2} \log (\frac{\beta}{\Theta}),
+\end{align}
+to achieve $r^h \leq \Theta r^0$, where $\beta$ is chosen to satisfy $s\leq 1.$
+
+
+------------------------------------------------------------------------------------------
+
+Another way: 
+
+\eqref{eq:aaaaaadasdasdsa} is equivalent to
+\begin{align}
+r^{h} \leq (1- \frac{s}{n_k} )   r^{h-1}+ (\frac{s}{n_k})^2 \frac{R}{2\lambda},  \quad R  = \frac{4L^2 n_k^2\sigma' \xv_{max}}{n^2}
+\end{align}
+Next we show 
+\begin{align}\label{eq:asasda}
+r^h \leq \frac{2R}{\lambda (2n_k -h_0 +h)}.
+\end{align}
+for all $t\geq h_0=\max(0, \left\lceil n_k\log (2\lambda n_k r^0/ R)\right\rceil  ) $. Indeed, let us choose $s=1,$ then at $h=h_0$, we have 
+\begin{align}
+r^h\leq (1-\frac{1}{n_k})^h r^0 + \frac{R}{2\lambda n_k^2} n_k \leq e^{-h/n_k} r^0 + \frac{R}{2\lambda n_k}\leq \frac{R}{\lambda n_k}.	 
+\end{align}
+\todo[inline]{
+Some small typo here!!!}
+\todo[inline]{Chenxin: is it fixed?}
+\todo[inline]{
+No :)
+you want to show that $r^{h_0}
+\leq \frac{2R}{2\lambda n_k}$
+so $\lambda$ is missing there
++
+clearly $\frac{R}{n_k} > \frac{R}{2n_k}$ :) so there is still some small problem 
+}
+
+This implies \eqref{eq:asasda} holds at $h=h_0$. For $h>h_0$ we use induction. Suppose the claim holds for $h-1$, therefore
+\begin{align}
+r^h\leq (1-s\frac{s}{n_k}) r^{h-1} + (\frac{s}{n_k})^2 R \leq (1-\frac{s}{n_k}) \frac{R}{\lambda (2n_k+t-1-t_0)} + (\frac{s}{n_k})^2 R.
+\end{align}
+Choosing $s = 2n_k/ (2n_k-h_0+h-1)\in[0,1] $ yields 
+\begin{align}
+r^h&\leq \Big(1- \frac{2}{2n_k -h_0+h-1}  \Big) \frac{2R}{\lambda (2n_k -h_0 +h-1)} + \Big( \frac{2n_k}{2n_k -h_0+h-1} \Big) ^2 \frac{R}{2\lambda }  \notag\\
+& = \frac{2R}{\lambda (2n_k -h_0 +h-1)} \Big(1- \frac{1}{2n_k -h_0+h-1}  \Big) \notag\\
+& =  \frac{2R}{\lambda (2n_k -h_0 +h-1)} \Big( \frac{2n_k -h_0+h-2	}{2n_k -h_0+h-1}  \Big) \notag\\
+& \leq  \frac{2R}{\lambda (2n_k -h_0 +h-1)} \Big( \frac{2n_k -h_0+h-1	}{2n_k -h_0+h}  \Big) \notag\\
+& = \frac{2R}{\lambda (2n_k -h_0 +h)} . 
+\end{align}
+To achieve $r^h \leq \Theta r^0$, choose 
+$$ h\geq \frac{2R}{\Theta r^0 \lambda} + h_0 -2n_k.$$
+
+
+To get a upper bound for $r^0$, we have 
+\begin{align}
+r^0 = H_k(0;  \wv) - \Ggk( 0; \wv) &\leq \frac{1}{n} \sum_{i\in\mathcal P_k} (l_i(\wv^T \xv_i) + l_i^*(-\alpha_i)) + \lambda \|\wv\|^2\notag\\
+& = \frac{1}{n} \sum_{i\in\mathcal P_k} (-\alphav \wv^T \xv_i) + \lambda \|\wv\|^2	\notag\\
+& = 2\lambda \|\wv\|^2.
+\end{align}
+Then how to bound $\|\wv\|^2$?
+
+
+\end{document} 
+
+ 
+\section{Some tasks to do for Martin Takac}
+ 
+
+
+\todo[inline]{Show that
+$-u_i \in \dom(\ell_i^*)$}
+
+\begin{lemma}
+\begin{equation}
+-u_i  \in \partial \ell_i \iff  -u_i \in \dom(\ell_i^*)
+\end{equation}
+\end{lemma}
+\begin{proof}
+$\ell^*_i (-u_i)=  \sup_{y} \{-u_i\omega(\alphav)^T y_i - \ell_i(\omega(\alphav)^T y_i) \}\leq-u_i\omega(\alphav)^T \xv_i - \ell_i(\omega(\alphav)^T \xv_i)  < + \infty$. So $-u_i \in \dom(\ell_i^*)$.
+\end{proof}
+
+
+\begin{lemma} \label{lemma:eq24}
+$$   -u_i \in \partial \ell_i(\wv(\alphav)^T \xv_i)  \iff  \ell_i^*(-u_i) = -u_i \wv(\alphav)^T \xv_i -\ell_i(\wv(\alphav)^T \xv_i), $$
+\end{lemma}
+\begin{proof}
+
+Since 
+\begin{equation}
+\partial f(x) = \{g: f(y)\geq f(x) + \left\langle g, y-x\right\rangle, \; \forall y\},
+\end{equation}
+by \eqref{eq:defintionOfUi}, we have 
+\begin{equation}
+-u_i\omega(\alphav)^T \xv_i - \ell_i(\omega(\alphav)^T \xv_i) \geq  \sup_{y} \{-u_i\omega(\alphav)^T y_i - \ell_i(\omega(\alphav)^T y_i) \}= \ell^*_i (-u_i).
+\end{equation}
+
+Also, by the definition of convex conjugate, 
+\begin{equation}
+\ell^*_i (-u_i) \geq -u_i\omega(\alphav)^T \xv_i - \ell_i(\omega(\alphav)^T \xv_i).
+\end{equation}
+Hence,  we have
+\begin{equation}
+\ell_i^*(-u_i)
+= -u_i \wv(\alphav)^T \xv_i
+  -\ell_i(\wv(\alphav)^T \xv_i),
+\end{equation} 
+which is \eqref{eq:adjwofcewa}.
+\end{proof}
+
+
+
+\section{OLD STUFF}
+
+
+\begin{lemma}\label{lm: cite_lm6}
+(Local Convergence on the Subproblem). For any $\vc{\alphav_{[k]}}{0}\in \R^n$ and $\bar \in R^d$, let us define
+%\begin{equation}
+%\vc{\alphav}{*}_{[k]}\eqdef \argmax_{\alphav_{[k]} \in \R^n}\Ggk(\Delta\alphav_{[k]} ; \wv(\alphav_{[k]})).
+%\end{equation}
+If LOCALSDCA is used for H iterations on block k, then
+\begin{equation}
+\mathbf E [\Ggk( \Delta\alphav^*_{[k]} ; \wv) - \Ggk(  \Delta\alphav^H_{[k]}; \wv)] \leq \Big(1-\frac{s}{n_k}\Big)^H \Big(\Ggk( \Delta\alphav^*_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(0)}_{[k]}; \wv)) \Big)
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+We will use Lemma \ref{lm:cite_lemma5} with 
+$$ s= \frac{\lambda n\mu}{\sigma' +\lambda n\mu}\in[0,1] .$$
+Because $\|\xv_i\|\leq 1$. Therefore the choice of $s$ implies $\sigma' \| \xv_i\|^2- \frac{\lambda n\mu(1-s)}{s}\leq 0$, hence $\vc{G}{h}\leq 0$ for all $h$. So 
+\begin{equation}
+\mathbf E [\Ggk( \Delta\alphav^{(h)}_{[k]} ; \wv) - \Ggk(  \Delta\alphav^{(h-1)}_{[k]}; \wv)] \geq \frac{s}{n_k} (P_k(\wv_k^{(h-1)}, \overline \wv) - D_k(\alphav_{[k]}^{(h-1)}, \overline \wv)).
+\end{equation}
+Following the proof of Theorem 16 in \cite{ShalevShwartz:2013wl},
+%Theorem 5 in \cite{ShalevShawartzZhang} 
+we obtain the claimed bound.
+\end{proof}
+
+Thus, Theorem \ref{thm:LocalSDCA_smooth2} has been proved.
