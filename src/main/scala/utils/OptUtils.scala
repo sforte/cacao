@@ -68,7 +68,7 @@ object OptUtils {
   def printSummaryStatsPrimalDual(
     algName: String, data: RDD[Array[LabelledPoint]], model: Loss[RealFunction,RealFunction],
     regularizer: Regularizer, n: Long,
-    v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
+    v: Vector[Double], alpha: RDD[DenseVector[Double]], asd: Double=1.0) = {
 
     val w = regularizer.dualGradient(v)
     val objVal = computePrimalObjective(data, model, regularizer, n, w)
@@ -77,9 +77,9 @@ object OptUtils {
 
     println(
       algName +
-      s" Objective Value: $objVal" +
-      s"\n Dual Objective Value: $dualObjVal" +
-      s"\n Duality Gap: $dualityGap"
+      s" Objective Value: ${asd*objVal}" +
+      s"\n Dual Objective Value: ${asd*dualObjVal}" +
+      s"\n Duality Gap: ${asd*dualityGap}"
     )
 
     dualityGap

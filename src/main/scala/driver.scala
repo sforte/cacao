@@ -76,7 +76,7 @@ object driver {
         where g_i is either the l2 loss or the logistic
         (you have to choose the right one inside the L1 class.
      */
-    L1.optimize(sc, data, lambda)
+    L1.optimize(sc, data, lambda, numPasses, numRounds, numSplits)
 
     return
 

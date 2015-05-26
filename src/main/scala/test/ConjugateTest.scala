@@ -2,7 +2,6 @@ package test
 
 import breeze.numerics.abs
 import models.{DifferentiableRealFunction, GenericLoss, RealFunction}
-import optimizers.distributed.QModifiedL1Loss
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer

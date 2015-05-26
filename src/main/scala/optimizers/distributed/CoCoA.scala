@@ -11,7 +11,7 @@ import utils.OptUtils._
 import vectors.LabelledPoint
 
 class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
-  (@transient sc: SparkContext, localSolver: LocalOptimizer[LossType], numRounds: Int, beta: Double, seed: Int)
+  (@transient sc: SparkContext, localSolver: LocalOptimizer[LossType], numRounds: Int, beta: Double, seed: Int, asd: Double = 1.0)
   extends DistributedOptimizer[LossType] {
 
   def optimize(
@@ -50,7 +50,7 @@ class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
 
       println(s"Iteration: $t")
       if (t % 1 == 0) {
-        gap = printSummaryStatsPrimalDual("CoCoA", data, loss, regularizer, n, v, alpha)
+        gap = printSummaryStatsPrimalDual("CoCoA", data, loss, regularizer, n, v, alpha, asd)
         println(epsilon)
       }
 
@@ -61,7 +61,7 @@ class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
 
     println(Calendar.getInstance.getTime)
 
-    printSummaryStatsPrimalDual("CoCoA", data, loss, regularizer, n, v, alpha)
+    printSummaryStatsPrimalDual("CoCoA", data, loss, regularizer, n, v, alpha, asd)
 
     (alpha, v)
   }

@@ -19,51 +19,51 @@ import scala.math._
 
 object L1 {
 
-  def optimize(sc: SparkContext, Xt: RDD[LabelledPoint], lambda: Double) = {
+  def optimize(sc: SparkContext, Xt: RDD[LabelledPoint], lambda: Double, numPasses: Int, numRounds: Int, numSplits: Int) = {
 
     // number of passes of the local solver
-    val numPasses = 100
+//    val numPasses = 1
     // number of cocoa rounds
-    val numRounds = 100
+//    val numRounds = 100
+//    val numSplits = 1
 
-    val n = Xt.count().toInt
-    val d = Xt.first().features.size
-
+    val (d,n) = (Xt.count().toInt, Xt.first().features.size)
+//println(d,n)
     val b = new DenseVector[Double](Xt.map(_.label).toLocalIterator.toArray)
-
-    // transposing the data matrix
-    val A = transpose(Xt, n, d, lambda, sc).repartition(1)
+    val A = transpose(Xt, d, n, lambda, sc).coalesce(numSplits)
 
     val partData = A.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true)
     val partAlphas = A.map(_ => 0.0)
       .mapPartitions(x=>Iterator(new DenseVector(x.toArray)), preservesPartitioning = true)
-    val v = DenseVector.zeros[Double](n)
+
+    val v = DenseVector.zeros[Double](d)
 
     // by setting the regularizer you can obtain either l1 logistic or lasso
-//    val regularizer = new L2RegularizerMinusB(1.0/(lambda*d), b)
-    val regularizer = new LogisticRegularizerMinusB(1.0/(lambda*d), b)
+    val regularizer = new L2RegularizerMinusB(1.0/(lambda*d*n), b)
+//    val regularizer = new LogisticRegularizerMinusB(1.0/(lambda*d*n), b)
 
     // this is basically B
-    val objBound = regularizer.dual(v)/lambda
+    val objBound = regularizer.dual(v)/(d*lambda)
+
     val loss = new LModifiedL1Loss(objBound)
 
     val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(1000)
 
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
-    val cocoa = new CoCoA(sc, localSolver, numRounds, 1.0, 0)
+    val cocoa = new CoCoA(sc, localSolver, numRounds, 1.0, 0, n*lambda)
 
     cocoa.optimize(loss, regularizer, d, partData, partAlphas, v, 0.0)
   }
 
-  def transpose(At: RDD[LabelledPoint], n: Int, d: Int, lambda: Double, sc: SparkContext): RDD[LabelledPoint] = {
+  def transpose(At: RDD[LabelledPoint], d: Int, n: Int, lambda: Double, sc: SparkContext): RDD[LabelledPoint] = {
     (At.map(_.features.asInstanceOf[SparseVector[Double]]) ++
-      sc.parallelize(Array(new SparseVector[Double]((0 until d).toArray, Array.fill(d)(0), d))))
+      sc.parallelize(Array(new SparseVector[Double]((0 until n).toArray, Array.fill(n)(0), d))))
         .zipWithIndex()
           .flatMap{case (p,i) => (p.index zip p.data).map{case (f,v) => (f,(i.toInt,v))}}
             .groupBy(_._1).sortBy(_._1).map {case (i, p) => (i, p.map(_._2))}.map(_._2.toArray.sorted)
-              .map(d => new LabelledPoint(0.0, new SparseVector[Double](
-                d.map(_._1).toArray, d.map(_._2).toArray, d.size-1, n) / lambda))
+              .map(dd => new LabelledPoint(0.0, new SparseVector[Double](
+                dd.map(_._1).toArray, dd.map(_._2).toArray, dd.size-1, d) / (lambda*d)))
   }
 }
 
