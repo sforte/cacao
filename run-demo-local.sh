@@ -5,6 +5,4 @@
 --numPasses=1 \
 --numSplits=2 \
 --lambda=0.01 \
---justCoCoA=true \
---beta=1.0 \
 --sgdIterations=100
