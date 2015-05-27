@@ -1,14 +1,13 @@
 package optimizers
 
 import breeze.linalg.{DenseVector, Vector}
-import models.{Regularizer, RealFunction, Loss}
+import models.{Model, Regularizer, RealFunction, Loss}
 import org.apache.spark.rdd.RDD
 import vectors.LabelledPoint
 
 trait Optimizer[-LossType<:Loss[_,_], DataType, AlphasType, VType] extends Serializable {
 
-  def optimize(loss: LossType, reg: Regularizer, n: Long,
-               data: DataType, alpha: AlphasType, v: VType): (AlphasType,VType)
+  def optimize(model: Model[LossType], data: DataType, alpha: AlphasType, v: VType): (AlphasType,VType)
 }
 
 trait SingleCoordinateOptimizer[-LossType<:Loss[_,_]]

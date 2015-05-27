@@ -4,7 +4,7 @@ import breeze.linalg.Vector
 import models.HingeLoss
 import optimizers.SingleCoordinateOptimizer
 import vectors.{LabelledPoint, LazyScaledVector}
-import models.Regularizer
+import models.Model
 
 /**
  * Created by simone on 08/05/15.
@@ -14,10 +14,12 @@ import models.Regularizer
   solvable in closed form.
  */
 class SVMOptimizer extends SingleCoordinateOptimizer[HingeLoss] {
-  def optimize(model: HingeLoss, regularizer: Regularizer, n: Long,
-               pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
+  def optimize(model: Model[HingeLoss], pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
-    val lambda = regularizer.lambda
+    val lambda = model.lambda
+    val n = model.n
+    val regularizer = model.regularizer
+
     val w : Vector[Double] = regularizer.dualGradient(v)
 
     val x = pt.features

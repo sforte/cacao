@@ -82,7 +82,6 @@ case class GenericLoss[+P<:RealFunction,+D<:RealFunction]
 trait Regularizer extends Serializable {
   def primal(w: Vector[Double]): Double
   def dualGradient(w: Vector[Double]): Vector[Double]
-  def lambda: Double
 
   def dual(v: Vector[Double]) = {
     val w = dualGradient(v)
@@ -90,9 +89,4 @@ trait Regularizer extends Serializable {
   }
 }
 
-trait Model[L<:Loss[_,_]] {
-  def n: Long
-  def lambda: Double
-  def loss: L
-  def regularizer: Regularizer
-}
+case class Model[+L<:Loss[_,_]] (n: Long, lambda: Double, loss: L, regularizer: Regularizer)

@@ -8,6 +8,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import utils.{DualityGapConvergenceChecker, ConvergenceChecker}
 import vectors.LabelledPoint
+import models.Model
 
 class CoCoA[-LossType<:Loss[_,_]]
   (@transient sc: SparkContext, localSolver: LocalOptimizer[LossType],
@@ -15,7 +16,7 @@ class CoCoA[-LossType<:Loss[_,_]]
   extends DistributedOptimizer[LossType] {
 
   def optimize (
-    loss: LossType, regularizer: Regularizer, n: Long,
+    model: Model[LossType],
     data: RDD[Array[LabelledPoint]],
     alphaInit: RDD[DenseVector[Double]],
     vInit: DenseVector[Double]
@@ -31,12 +32,12 @@ class CoCoA[-LossType<:Loss[_,_]]
 
     var t = 1
 
-    while (!convergenceChecker.hasConverged(loss, regularizer, n, data, alpha, v, t)) {
+    while (!convergenceChecker.hasConverged(model, data, alpha, v, t)) {
 
       val vv = sc.broadcast(v)
 
       val updates = (alpha zip data).mapPartitions(
-        CoCoA.partitionUpdate(loss,regularizer,n,localSolver,_,vv),preservesPartitioning=true).cache()
+        CoCoA.partitionUpdate(model, localSolver, _, vv),preservesPartitioning=true).cache()
 
       alpha = (alpha zip updates.map(_._2)).map ({
         case (alphaOld, deltaAlpha) => alphaOld + deltaAlpha * scaling }).cache()
@@ -52,9 +53,7 @@ class CoCoA[-LossType<:Loss[_,_]]
 
 object CoCoA {
   def partitionUpdate [LossType<:Loss[_,_]] (
-    loss: LossType,
-    regularizer: Regularizer,
-    n: Long,
+    model: Model[LossType],
     localSolver: LocalOptimizer[LossType],
     zipData: Iterator[(DenseVector[Double], Array[LabelledPoint])],
     vInit: Broadcast[DenseVector[Double]]): Iterator[(DenseVector[Double], DenseVector[Double])] = {
@@ -64,7 +63,7 @@ object CoCoA {
     val alpha = zipPair._1
     val v = vInit.value
 
-    val (deltaAlpha,deltaV) = localSolver.optimize(loss, regularizer, n, localData, v, alpha)
+    val (deltaAlpha,deltaV) = localSolver.optimize(model, localData, v, alpha)
 
     Iterator((deltaV, deltaAlpha))
   }

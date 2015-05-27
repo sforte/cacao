@@ -19,7 +19,7 @@ import scala.math._
 
 object L1 {
 
-  def optimize(sc: SparkContext, Xt: RDD[LabelledPoint], lambda: Double, numPasses: Int, numRounds: Int, numSplits: Int) = {
+  def optimize(sc: SparkContext, Xt: RDD[LabelledPoint], lam: Double, numPasses: Int, numRounds: Int, numSplits: Int) = {
 
     // number of passes of the local solver
 //    val numPasses = 1
@@ -30,7 +30,7 @@ object L1 {
     val (d,n) = (Xt.count().toInt, Xt.first().features.size)
 //println(d,n)
     val b = new DenseVector[Double](Xt.map(_.label).toLocalIterator.toArray)
-    val A = transpose(Xt, d, n, lambda, sc).coalesce(numSplits)
+    val A = transpose(Xt, d, n, lam, sc).coalesce(numSplits)
 
     val partData = A.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true)
     val partAlphas = A.map(_ => 0.0)
@@ -38,24 +38,19 @@ object L1 {
 
     val v = DenseVector.zeros[Double](d)
 
-    // by setting the regularizer you can obtain either l1 logistic or lasso
-    val regularizer = new L2RegularizerMinusB(1.0/(lambda*d*n), b)
-//    val regularizer = new LogisticRegularizerMinusB(1.0/(lambda*d*n), b)
+    val lambda = 1.0/(lam*d*n)
+    val regularizer = new L2RegularizerMinusB(b)
+    val loss = new LModifiedL1Loss(regularizer.dual(v)/(d*lam))
 
-    // this is basically B
-    val objBound = regularizer.dual(v)/(d*lambda)
-
-    val loss = new LModifiedL1Loss(objBound)
+    val model = new Model (d, lambda, loss, regularizer)
 
     val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(1000)
 
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
-//    n*lambda
-
     val cocoa = new CoCoA(sc, localSolver)
 
-    cocoa.optimize(loss, regularizer, d, partData, partAlphas, v)
+    cocoa.optimize(model, partData, partAlphas, v)
   }
 
   def transpose(At: RDD[LabelledPoint], d: Int, n: Int, lambda: Double, sc: SparkContext): RDD[LabelledPoint] = {
@@ -95,14 +90,14 @@ class LModifiedL1Loss(val B: Double) extends GenericLoss[RealFunction,Differenti
   )
 )
 
-class L2RegularizerMinusB(val lambda: Double, b: Vector[Double]) extends Regularizer {
+class L2RegularizerMinusB(b: Vector[Double]) extends Regularizer {
 
   def primal(w: Vector[Double]) = l2norm(w) / 2 + (w dot b)
   def dualGradient(v: Vector[Double]) = new LazySumVector(
     v.asInstanceOf[DenseVector[Double]], b.asInstanceOf[DenseVector[Double]], -1.0)
 }
 
-class LogisticRegularizerMinusB(val lambda: Double, b: Vector[Double]) extends Regularizer {
+class LogisticRegularizerMinusB(b: Vector[Double]) extends Regularizer {
 
   def primal(w: Vector[Double]) = w.toArray.zipWithIndex.map { case(a,i) =>
     if (a == 0 || b(i)*a == -1) 0.0 else (1+a*b(i))*log(1+a*b(i)) - a*b(i)*log(-a*b(i))

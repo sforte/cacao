@@ -4,17 +4,19 @@ import breeze.linalg.Vector
 import models.RidgeLoss
 import optimizers.SingleCoordinateOptimizer
 import vectors.{LazyScaledVector, LabelledPoint}
-import models.Regularizer
+import models.Model
 
 /*
   An ad-hoc single coordinate optimizer for Ridge; the optimization is
   solvable in closed form.
  */
 class RidgeOptimizer extends SingleCoordinateOptimizer[RidgeLoss] {
-  def optimize(model: RidgeLoss, regularizer: Regularizer, n: Long,
-               pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
+  def optimize(model: Model[RidgeLoss], pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
-    val lambda = regularizer.lambda
+    val lambda = model.lambda
+    val n = model.n
+    val regularizer = model.regularizer
+
     val w : Vector[Double] = regularizer.dualGradient(v)
 
     val x = pt.features

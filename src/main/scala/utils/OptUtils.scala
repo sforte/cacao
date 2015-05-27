@@ -1,7 +1,7 @@
 package utils
 
 import breeze.linalg.{DenseVector, Vector}
-import models.{Regularizer, Loss, RealFunction}
+import models.{Model, Regularizer, Loss, RealFunction}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
@@ -17,33 +17,32 @@ object OptUtils {
     data.map(_.map(x => loss(x.label)(x.features dot w)).sum).reduce(_+_) / n
   }
 
-  def computeDualityGap[RF<:RealFunction,RF2<:RealFunction] (data: RDD[Array[LabelledPoint]], loss: Loss[RF,RF2],
-                        regularizer: Regularizer, n: Long, v: Vector[Double], alpha: RDD[Double]) = {
-    computePrimalObjective(data, loss, regularizer, n, regularizer.dualGradient(v)) -
-      computeDualObjective(data, loss, regularizer, n, v, alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray))))
+  def computeDualityGap [LossType <: Loss[_<:RealFunction,_<:RealFunction]] (
+    data: RDD[Array[LabelledPoint]], model: Model[LossType], v: Vector[Double], alpha: RDD[Double]) = {
+    computePrimalObjective(data, model, model.regularizer.dualGradient(v)) -
+      computeDualObjective(data, model, v, alpha.mapPartitions(x=>Iterator(new DenseVector(x.toArray))))
   }
 
   /*
     Compute primal objective for the loss function defined in the model and a L2 norm regularizer
    */
-  def computePrimalObjective[RF<:RealFunction] (data: RDD[Array[LabelledPoint]], loss: Loss[RF,_],
-                             regularizer: Regularizer, n: Long, w: Vector[Double]) = {
-    computeAvgLoss(data, loss, n, w) + regularizer.primal(w) * regularizer.lambda
+  def computePrimalObjective [LossType<:Loss[_<:RealFunction,_<:RealFunction]] (
+    data: RDD[Array[LabelledPoint]], model: Model[LossType], w: Vector[Double]) = {
+    computeAvgLoss(data, model.loss, model.n, w) + model.regularizer.primal(w) * model.lambda
   }
 
   /*
     Compute dual objective value for the dual loss function defined in the model and a L2 norm regularizer
    */
-  def computeDualObjective[RF<:RealFunction](data: RDD[Array[LabelledPoint]], loss: Loss[_,RF],
-                           regularizer: Regularizer, n: Long,
-                           v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
+  def computeDualObjective [LossType<:Loss[_<:RealFunction,_<:RealFunction]] (
+    data: RDD[Array[LabelledPoint]], model: Model[LossType], v: Vector[Double], alpha: RDD[DenseVector[Double]]) = {
 
     val lossTerm = (alpha zip data)
       .map(x => x._1.data zip x._2.map(_.label))
-      .map(_.map(p => -loss.conjugate(p._2)(-p._1)).sum)
-      .reduce(_+_) / n
+      .map(_.map(p => -model.loss.conjugate(p._2)(-p._1)).sum)
+      .reduce(_+_) / model.n
 
-    val regTerm = -regularizer.dual(v) * regularizer.lambda
+    val regTerm = -model.regularizer.dual(v) * model.lambda
 
     lossTerm + regTerm
   }
@@ -65,14 +64,13 @@ object OptUtils {
   /*
     Prints primal and dual objective values and the corresponding duality gap
    */
-  def printSummaryStatsPrimalDual(
-    algName: String, data: RDD[Array[LabelledPoint]], model: Loss[RealFunction,RealFunction],
-    regularizer: Regularizer, n: Long,
+  def printSummaryStatsPrimalDual [LossType<:Loss[_<:RealFunction,_<:RealFunction]] (
+    algName: String, data: RDD[Array[LabelledPoint]], model: Model[LossType],
     v: Vector[Double], alpha: RDD[DenseVector[Double]], asd: Double=1.0) = {
 
-    val w = regularizer.dualGradient(v)
-    val objVal = computePrimalObjective(data, model, regularizer, n, w)
-    val dualObjVal = computeDualObjective(data, model, regularizer, n, v, alpha)
+    val w = model.regularizer.dualGradient(v)
+    val objVal = computePrimalObjective(data, model, w)
+    val dualObjVal = computeDualObjective(data, model, v, alpha)
     val dualityGap = objVal - dualObjVal
 
     println(
@@ -85,9 +83,10 @@ object OptUtils {
     dualityGap
   }
 
-  def validateSolution(data: RDD[Array[LabelledPoint]], v: Vector[Double], alpha: RDD[DenseVector[Double]],
-                       loss: Loss[RealFunction,RealFunction], regularizer: Regularizer, n: Long){
-    val lambda = regularizer.lambda
+  def validateSolution [LossType<:Loss[_<:RealFunction,_<:RealFunction]] (
+    data: RDD[Array[LabelledPoint]], v: Vector[Double], alpha: RDD[DenseVector[Double]], model: Model[LossType]) {
+    val lambda = model.lambda
+    val n = model.n
 
     val asdf = (data zip alpha).flatMap(x => (x._1 zip x._2.data)
       .map { case (LabelledPoint(_,x),a) =>  x * (a/(lambda*n))}).reduce(_+_)
@@ -97,29 +96,21 @@ object OptUtils {
   /*
     Prints the primal objective value
    */
-  def printSummaryStats(algName: String, loss: Loss[RealFunction,RealFunction],
-                        regularizer: Regularizer, n: Long,
-                        data: RDD[Array[LabelledPoint]], v: Vector[Double]) =  {
+  def printSummaryStats [LossType<:Loss[_<:RealFunction,_<:RealFunction]] (
+    algName: String, model: Model[LossType], data: RDD[Array[LabelledPoint]], v: Vector[Double]) =  {
 
-    val w = regularizer.dualGradient(v)
-    val objVal = computePrimalObjective(data, loss, regularizer, n, w)
+    val w = model.regularizer.dualGradient(v)
+    val objVal = computePrimalObjective(data, model, w)
 
-    println(
-      algName +
-      s" Objective Value: $objVal"
-    )
+    println(s"$algName: \n Objective Value: $objVal")
   }
 
-  def printSummaryStatsFromW(algName: String, loss: Loss[RealFunction,RealFunction],
-                             regularizer: Regularizer, n: Long,
-                             data: RDD[Array[LabelledPoint]], w: Vector[Double]) =  {
+  def printSummaryStatsFromW [LossType<:Loss[_<:RealFunction,_<:RealFunction]] (
+    algName: String, model: Model[LossType], data: RDD[Array[LabelledPoint]], w: Vector[Double]) =  {
 
-    val objVal = computePrimalObjective(data, loss, regularizer, n, w)
+    val objVal = computePrimalObjective(data, model, w)
 
-    println(
-      algName +
-        s" Objective Value: $objVal"
-    )
+    println(s"$algName: Objective Value: $objVal")
   }
 
   def loadLibSVMFile(sc: SparkContext, trainFile: String, numFeatures: Int, numSplits: Int) = {

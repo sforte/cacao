@@ -2,7 +2,7 @@ package optimizers.local
 
 import java.security.SecureRandom
 import breeze.linalg.DenseVector
-import models.{Regularizer, RealFunction, Loss}
+import models.{Loss, Model}
 import optimizers.{LocalOptimizer, SingleCoordinateOptimizer}
 import vectors.LabelledPoint
 
@@ -21,13 +21,14 @@ class PasscodeWild [-LossType<:Loss[_,_]]
    * @return deltaAlpha and deltaW, summarizing the performed local changes, see paper
    */
   override def optimize(
-    loss: LossType,
-    regularizer: Regularizer,
-    n: Long,
+    model: Model[LossType],
     localData: Array[LabelledPoint],
     vOld: DenseVector[Double],
     alphaOld: DenseVector[Double]):
   (DenseVector[Double],DenseVector[Double]) = {
+
+    val n = model.n
+    val lambda = model.lambda
 
     val alpha = alphaOld.copy
     val v = vOld.copy
@@ -46,8 +47,7 @@ class PasscodeWild [-LossType<:Loss[_,_]]
           val pt = localData(idx)
           val a = alpha(idx)
 
-          val (scDeltaAlpha, scDeltaV) =
-            scOptimizer.optimize(loss, regularizer, n, pt, a, v)
+          val (scDeltaAlpha, scDeltaV) = scOptimizer.optimize(model, pt, a, v)
 
           alpha(idx) += scDeltaAlpha
           v += scDeltaV
@@ -56,8 +56,8 @@ class PasscodeWild [-LossType<:Loss[_,_]]
     }
 
     val deltaAlpha = alpha - alphaOld
-    val deltaV = ((alpha.valuesIterator.toArray zip localData).par.map { case (alpha, LabelledPoint(y,x)) =>
-      x * (alpha / (regularizer.lambda*n))
+    val deltaV = ((alpha.valuesIterator.toArray zip localData).par.map {
+      case (alpha, LabelledPoint(y,x)) => x * (alpha / (lambda*n))
     }.reduce(_+_) - vOld).asInstanceOf[DenseVector[Double]]
 
     (deltaAlpha, deltaV)

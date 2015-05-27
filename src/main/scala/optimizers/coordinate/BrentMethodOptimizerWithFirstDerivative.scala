@@ -21,10 +21,13 @@ class BrentMethodOptimizerWithFirstDerivative
    * @return Delta alpha
    */
 
-  override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
-                        pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
+  override def optimize(model: Model[LossType], pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
-    val lambda = regularizer.lambda
+    val lambda = model.lambda
+    val n = model.n
+    val regularizer = model.regularizer
+    val loss = model.loss
+
     val x = pt.features
     val y = pt.label
 

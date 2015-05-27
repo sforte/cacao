@@ -2,7 +2,7 @@ package optimizers.local
 
 import java.security.SecureRandom
 import breeze.linalg.DenseVector
-import models.{Regularizer, Loss}
+import models.{Model, Loss}
 import optimizers.{LocalOptimizer, SingleCoordinateOptimizer}
 import vectors.LabelledPoint
 
@@ -21,9 +21,7 @@ class SDCAOptimizer [-LossType<:Loss[_,_]]
    * @return deltaAlpha and deltaW, summarizing the performed local changes, see paper
    */
   override def optimize(
-    model: LossType,
-    regularizer: Regularizer,
-    n: Long,
+    model: Model[LossType],
     localData: Array[LabelledPoint],
     vOld: DenseVector[Double],
     alphaOld: DenseVector[Double]):
@@ -45,7 +43,7 @@ class SDCAOptimizer [-LossType<:Loss[_,_]]
         val pt = localData(idx)
 
         val (scDeltaAlpha, scDeltaV) =
-          scOptimizer.optimize(model, regularizer, n, pt, alpha(idx), v)
+          scOptimizer.optimize(model, pt, alpha(idx), v)
 
         v += scDeltaV
         alpha(idx) += scDeltaAlpha

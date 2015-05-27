@@ -79,7 +79,6 @@ object driver {
      */
     L1.optimize(sc, data, lambda, numPasses, numRounds, numSplits)
 
-    return
 
     val n = data.count()
 
@@ -89,10 +88,9 @@ object driver {
 
     val v = DenseVector.zeros[Double](numFeatures)
 
-    val loss = new LogisticLoss
+    val model = new Model(n, lambda, new LogisticLoss, new ElasticNet(0.001))
+
 //    val regularizer = new L1Regularizer(lambda, 0.01)
-    val regularizer = new ElasticNet(lambda, 0.001)
-    println(regularizer)
 
 //    val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
 
@@ -101,10 +99,9 @@ object driver {
 
     val cocoa = new CoCoA(sc, localSolver)
 
-    cocoa.optimize(loss, regularizer, n, partData, partAlphas, v)
-//    acccocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
+    cocoa.optimize(model, partData, partAlphas, v)
 
-    MllibLogisticWithL1.run(data, loss, regularizer, n, 100000)
+    MllibLogisticWithL1.run(data, model, 100000)
 
     sc.stop()
    }

@@ -1,7 +1,7 @@
 package optimizers.coordinate
 
 import breeze.linalg.Vector
-import models.{Regularizer, Loss, RealFunction}
+import models.{Model, Regularizer, Loss, RealFunction}
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
 import org.apache.commons.math.optimization.univariate.BrentOptimizer
@@ -21,16 +21,17 @@ class BrentMethodOptimizer [-LossType<:Loss[_,RealFunction]] (numIter: Int = 100
    * @return Delta alpha
    */
 
-  override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
-                        pt: LabelledPoint, alpha: Double, v: Vector[Double]) :
-    (Double, Vector[Double]) = {
+  override def optimize (model: Model[LossType], pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
-    val lambda = regularizer.lambda
+    val lambda = model.lambda
+    val n = model.n
+    val regularizer = model.regularizer
+    val loss = model.loss
 
     val y = pt.label
     val x = pt.features
 
-    val dualLoss = loss.conjugate(y)
+    val dualLoss = model.loss.conjugate(y)
 
     val w = regularizer.dualGradient(v)
 
