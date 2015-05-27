@@ -1,7 +1,7 @@
 package optimizers.coordinate
 
 import breeze.linalg.Vector
-import models.loss.HingeLoss
+import models.HingeLoss
 import optimizers.SingleCoordinateOptimizer
 import vectors.{LabelledPoint, LazyScaledVector}
 import models.Regularizer
@@ -15,7 +15,7 @@ import models.Regularizer
  */
 class SVMOptimizer extends SingleCoordinateOptimizer[HingeLoss] {
   def optimize(model: HingeLoss, regularizer: Regularizer, n: Long,
-               pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
+               pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
     val lambda = regularizer.lambda
     val w : Vector[Double] = regularizer.dualGradient(v)

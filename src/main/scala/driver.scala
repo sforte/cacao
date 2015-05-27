@@ -2,11 +2,12 @@ package distopt
 
 import breeze.linalg.DenseVector
 import breeze.numerics.{abs, pow}
-import models.loss.LogisticLoss
-import models.regularizer. ElasticNet
+import models.ElasticNet
+import oldstuff.MllibLogisticWithL1
 import optimizers.coordinate.{BrentMethodOptimizer, BrentMethodOptimizerWithFirstDerivative}
 import optimizers.local.SDCAOptimizer
 import optimizers.distributed._
+import models.LogisticLoss
 import models._
 import org.apache.commons.math.analysis.UnivariateRealFunction
 import org.apache.commons.math.optimization.GoalType
@@ -98,9 +99,9 @@ object driver {
     val scOptimizer = new BrentMethodOptimizer(sgdIterations*10)
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
-    val cocoa = new CoCoA(sc, localSolver, numRounds, beta, seed)
+    val cocoa = new CoCoA(sc, localSolver)
 
-    cocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
+    cocoa.optimize(loss, regularizer, n, partData, partAlphas, v)
 //    acccocoa.optimize(loss, regularizer, n, partData, partAlphas, v, 0.0)
 
     MllibLogisticWithL1.run(data, loss, regularizer, n, 100000)

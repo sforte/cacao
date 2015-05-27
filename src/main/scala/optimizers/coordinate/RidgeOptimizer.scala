@@ -1,7 +1,7 @@
 package optimizers.coordinate
 
 import breeze.linalg.Vector
-import models.loss.RidgeLoss
+import models.RidgeLoss
 import optimizers.SingleCoordinateOptimizer
 import vectors.{LazyScaledVector, LabelledPoint}
 import models.Regularizer
@@ -12,7 +12,7 @@ import models.Regularizer
  */
 class RidgeOptimizer extends SingleCoordinateOptimizer[RidgeLoss] {
   def optimize(model: RidgeLoss, regularizer: Regularizer, n: Long,
-               pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
+               pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
     val lambda = regularizer.lambda
     val w : Vector[Double] = regularizer.dualGradient(v)

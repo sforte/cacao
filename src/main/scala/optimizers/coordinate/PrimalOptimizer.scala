@@ -22,7 +22,7 @@ class PrimalOptimizer [-LossType<:Loss[RealFunction,RealFunction]] (numIter: Int
    */
 
   override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
-                        pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
+                        pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
     val lambda = regularizer.lambda
 

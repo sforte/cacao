@@ -22,7 +22,7 @@ class BrentMethodOptimizer [-LossType<:Loss[RealFunction,RealFunction]] (numIter
    */
 
   override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
-                        pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) :
+                        pt: LabelledPoint, alpha: Double, v: Vector[Double]) :
     (Double, Vector[Double]) = {
 
     val lambda = regularizer.lambda

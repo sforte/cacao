@@ -1,6 +1,6 @@
-package optimizers.distributed
+package oldstuff
 
-import models.{Regularizer, RealFunction, Loss}
+import models.{Loss, RealFunction, Regularizer}
 import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.optimization.L1Updater

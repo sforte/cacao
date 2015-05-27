@@ -26,8 +26,8 @@ class PasscodeWild [-LossType<:Loss[RealFunction,RealFunction]]
     n: Long,
     localData: Array[LabelledPoint],
     vOld: DenseVector[Double],
-    alphaOld: DenseVector[Double],
-    epsilon: Double = 0.0) : (DenseVector[Double],DenseVector[Double]) = {
+    alphaOld: DenseVector[Double]):
+  (DenseVector[Double],DenseVector[Double]) = {
 
     val alpha = alphaOld.copy
     val v = vOld.copy

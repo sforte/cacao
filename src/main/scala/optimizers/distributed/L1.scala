@@ -51,9 +51,11 @@ object L1 {
 
     val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
 
-    val cocoa = new CoCoA(sc, localSolver, numRounds, 1.0, 0, n*lambda)
+//    n*lambda
 
-    cocoa.optimize(loss, regularizer, d, partData, partAlphas, v, 0.0)
+    val cocoa = new CoCoA(sc, localSolver)
+
+    cocoa.optimize(loss, regularizer, d, partData, partAlphas, v)
   }
 
   def transpose(At: RDD[LabelledPoint], d: Int, n: Int, lambda: Double, sc: SparkContext): RDD[LabelledPoint] = {

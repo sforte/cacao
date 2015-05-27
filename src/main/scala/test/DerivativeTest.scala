@@ -2,7 +2,7 @@ package test
 
 import org.apache.commons.math3.analysis.UnivariateFunction
 import org.apache.commons.math3.analysis.differentiation.{DerivativeStructure, FiniteDifferencesDifferentiator}
-import models.loss.LogisticLoss
+import models.LogisticLoss
 import models.{DoublyDifferentiableRealFunction, RealFunction, DifferentiableRealFunction, Loss}
 
 /**

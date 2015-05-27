@@ -8,7 +8,7 @@ import vectors.LabelledPoint
 trait Optimizer[-LossType<:Loss[RealFunction,RealFunction], DataType, AlphasType, VType] extends Serializable {
 
   def optimize(loss: LossType, reg: Regularizer, n: Long,
-               data: DataType, alpha: AlphasType, v: VType, epsilon: Double = 0.0): (AlphasType,VType)
+               data: DataType, alpha: AlphasType, v: VType): (AlphasType,VType)
 }
 
 trait SingleCoordinateOptimizer[-LossType<:Loss[RealFunction,RealFunction]]

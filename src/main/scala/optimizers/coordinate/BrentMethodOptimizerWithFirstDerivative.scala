@@ -22,7 +22,7 @@ class BrentMethodOptimizerWithFirstDerivative
    */
 
   override def optimize(loss: LossType, regularizer: Regularizer, n: Long,
-                        pt: LabelledPoint, alpha: Double, v: Vector[Double], epsilon: Double = 0.0) = {
+                        pt: LabelledPoint, alpha: Double, v: Vector[Double]) = {
 
     val lambda = regularizer.lambda
     val x = pt.features
