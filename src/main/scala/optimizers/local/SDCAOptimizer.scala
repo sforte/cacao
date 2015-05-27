@@ -10,8 +10,8 @@ import vectors.LabelledPoint
  * A Single Dual Coordinate Ascent based local solver
  * @param scOptimizer The method used to optimize on a single coordinate
  */
-class SDCAOptimizer [-LossType<:Loss[_,_]]
-  (scOptimizer: SingleCoordinateOptimizer[LossType], numPasses: Int)
+class SDCAOptimizer [-LossType<:Loss[_,_]] (numPasses: Int = 10)
+  (implicit scOptimizer: SingleCoordinateOptimizer[LossType])
   extends LocalOptimizer[LossType] {
 
   /**
@@ -24,8 +24,7 @@ class SDCAOptimizer [-LossType<:Loss[_,_]]
     model: Model[LossType],
     localData: Array[LabelledPoint],
     vOld: DenseVector[Double],
-    alphaOld: DenseVector[Double]):
-  (DenseVector[Double],DenseVector[Double]) = {
+    alphaOld: DenseVector[Double]): (DenseVector[Double],DenseVector[Double]) = {
 
     val alpha = alphaOld.copy
     val v = vOld.copy

@@ -1,7 +1,8 @@
 package optimizers.distributed
 
 import breeze.linalg.DenseVector
-import models.{Loss, Regularizer, RealFunction}
+import models.Loss
+import optimizers.local.SDCAOptimizer
 import optimizers.{LocalOptimizer, DistributedOptimizer}
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
@@ -10,9 +11,11 @@ import utils.{DualityGapConvergenceChecker, ConvergenceChecker}
 import vectors.LabelledPoint
 import models.Model
 
-class CoCoA[-LossType<:Loss[_,_]]
-  (@transient sc: SparkContext, localSolver: LocalOptimizer[LossType],
-   beta: Double = 1.0, convergenceChecker: ConvergenceChecker[LossType] = new DualityGapConvergenceChecker)
+class CoCoA[-LossType<:Loss[_,_]] (
+  @transient sc: SparkContext,
+  beta: Double = 1.0,
+  localSolver: LocalOptimizer[LossType] = new SDCAOptimizer,
+  convergenceChecker: ConvergenceChecker[LossType] = new DualityGapConvergenceChecker)
   extends DistributedOptimizer[LossType] {
 
   def optimize (

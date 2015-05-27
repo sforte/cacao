@@ -6,7 +6,6 @@ import org.apache.spark.rdd.RDD
 import vectors.LabelledPoint
 
 trait Optimizer[-LossType<:Loss[_,_], DataType, AlphasType, VType] extends Serializable {
-
   def optimize(model: Model[LossType], data: DataType, alpha: AlphasType, v: VType): (AlphasType,VType)
 }
 

@@ -6,10 +6,10 @@ import org.apache.spark.rdd.RDD
 import utils.OptUtils._
 import vectors.LabelledPoint
 
-trait ConvergenceChecker[-L<:Loss[_,_]] extends Serializable {
+trait ConvergenceChecker[-LossType<:Loss[_,_]] extends Serializable {
 
   def hasConverged (
-    model: Model[L],
+    model: Model[LossType],
     data: RDD[Array[LabelledPoint]],
     alphaInit: RDD[DenseVector[Double]],
     v: DenseVector[Double],
@@ -17,12 +17,12 @@ trait ConvergenceChecker[-L<:Loss[_,_]] extends Serializable {
   ): Boolean
 }
 
-class DualityGapConvergenceChecker[-L<:Loss[RealFunction,RealFunction]]
+class DualityGapConvergenceChecker[-LossType<:Loss[RealFunction,RealFunction]]
   (epsilon: Double = 10E-8, maxRounds: Int = 1000, verbose: Boolean = true)
-    extends ConvergenceChecker[L] {
+    extends ConvergenceChecker[LossType] {
 
   def hasConverged (
-    model: Model[L],
+    model: Model[LossType],
     data: RDD[Array[LabelledPoint]],
     alpha: RDD[DenseVector[Double]],
     v: DenseVector[Double],

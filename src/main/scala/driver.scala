@@ -3,7 +3,6 @@ package distopt
 import breeze.linalg.DenseVector
 import breeze.numerics.{abs, pow}
 import models.ElasticNet
-import oldstuff.MllibLogisticWithL1
 import optimizers.coordinate.{BrentMethodOptimizer, BrentMethodOptimizerWithFirstDerivative}
 import optimizers.local.SDCAOptimizer
 import optimizers.distributed._
@@ -77,8 +76,7 @@ object driver {
         where g_i is either the l2 loss or the logistic
         (you have to choose the right one inside the L1 class.
      */
-    L1.optimize(sc, data, lambda, numPasses, numRounds, numSplits)
-
+//    L1.optimize(sc, data, lambda, numPasses, numRounds, numSplits)
 
     val n = data.count()
 
@@ -94,14 +92,9 @@ object driver {
 
 //    val scOptimizer = new BrentMethodOptimizerWithFirstDerivative(sgdIterations*10)
 
-    val scOptimizer = new BrentMethodOptimizer(sgdIterations*10)
-    val localSolver = new SDCAOptimizer(scOptimizer, numPasses)
-
-    val cocoa = new CoCoA(sc, localSolver)
+    val cocoa = new CoCoA(sc)
 
     cocoa.optimize(model, partData, partAlphas, v)
-
-    MllibLogisticWithL1.run(data, model, 100000)
 
     sc.stop()
    }
