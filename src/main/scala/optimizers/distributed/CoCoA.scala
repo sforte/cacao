@@ -9,9 +9,9 @@ import org.apache.spark.rdd.RDD
 import utils.{DualityGapConvergenceChecker, ConvergenceChecker}
 import vectors.LabelledPoint
 
-class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
+class CoCoA[-LossType<:Loss[_,_]]
   (@transient sc: SparkContext, localSolver: LocalOptimizer[LossType],
-   beta: Double = 1.0, convergenceChecker: ConvergenceChecker = new DualityGapConvergenceChecker)
+   beta: Double = 1.0, convergenceChecker: ConvergenceChecker[LossType] = new DualityGapConvergenceChecker)
   extends DistributedOptimizer[LossType] {
 
   def optimize (
@@ -51,7 +51,7 @@ class CoCoA[-LossType<:Loss[RealFunction,RealFunction]]
 }
 
 object CoCoA {
-  def partitionUpdate [LossType<:Loss[RealFunction,RealFunction]] (
+  def partitionUpdate [LossType<:Loss[_,_]] (
     loss: LossType,
     regularizer: Regularizer,
     n: Long,

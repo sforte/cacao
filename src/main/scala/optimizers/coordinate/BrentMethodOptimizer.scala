@@ -11,7 +11,7 @@ import vectors.{LabelledPoint, LazyScaledVector}
 /**
  * Derivative free method to optimize to do ascent on a single coordinate.
  */
-class BrentMethodOptimizer [-LossType<:Loss[RealFunction,RealFunction]] (numIter: Int = 100)
+class BrentMethodOptimizer [-LossType<:Loss[_,RealFunction]] (numIter: Int = 100)
   extends SingleCoordinateOptimizer[LossType] {
 
   /**

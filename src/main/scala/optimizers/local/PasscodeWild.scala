@@ -10,7 +10,7 @@ import vectors.LabelledPoint
  * A Single Dual Coordinate Ascent based local solver
  * @param scOptimizer The method used to optimize on a single coordinate
  */
-class PasscodeWild [-LossType<:Loss[RealFunction,RealFunction]]
+class PasscodeWild [-LossType<:Loss[_,_]]
   (scOptimizer: SingleCoordinateOptimizer[LossType], numPasses: Int, numThreads: Int)
     extends LocalOptimizer[LossType] {
 

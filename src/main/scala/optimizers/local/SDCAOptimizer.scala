@@ -2,7 +2,7 @@ package optimizers.local
 
 import java.security.SecureRandom
 import breeze.linalg.DenseVector
-import models.{Regularizer, RealFunction, Loss}
+import models.{Regularizer, Loss}
 import optimizers.{LocalOptimizer, SingleCoordinateOptimizer}
 import vectors.LabelledPoint
 
@@ -10,7 +10,7 @@ import vectors.LabelledPoint
  * A Single Dual Coordinate Ascent based local solver
  * @param scOptimizer The method used to optimize on a single coordinate
  */
-class SDCAOptimizer [-LossType<:Loss[RealFunction,RealFunction]]
+class SDCAOptimizer [-LossType<:Loss[_,_]]
   (scOptimizer: SingleCoordinateOptimizer[LossType], numPasses: Int)
   extends LocalOptimizer[LossType] {
 

@@ -11,7 +11,7 @@ import vectors.{LabelledPoint, LazyScaledVector}
 /**
  * Derivative free method to do descent on a local primal problem
  */
-class PrimalOptimizer [-LossType<:Loss[RealFunction,RealFunction]] (numIter: Int)
+class PrimalOptimizer [-LossType<:Loss[RealFunction,_]] (numIter: Int)
   extends SingleCoordinateOptimizer[LossType] {
 
   /**

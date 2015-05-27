@@ -89,3 +89,10 @@ trait Regularizer extends Serializable {
     (w dot v) - primal(w)
   }
 }
+
+trait Model[L<:Loss[_,_]] {
+  def n: Long
+  def lambda: Double
+  def loss: L
+  def regularizer: Regularizer
+}
