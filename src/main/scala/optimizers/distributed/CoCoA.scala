@@ -1,29 +1,32 @@
 package optimizers.distributed
 
 import breeze.linalg.DenseVector
-import models.Loss
+import models._
+import optimizers.coordinate.{BrentMethodOptimizer, BrentMethodOptimizerWithFirstDerivative, RidgeOptimizer, SVMOptimizer}
 import optimizers.local.SDCAOptimizer
-import optimizers.{LocalOptimizer, DistributedOptimizer}
+import optimizers.{SingleCoordinateOptimizer, LocalOptimizer, DistributedOptimizer}
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import utils.{DualityGapConvergenceChecker, ConvergenceChecker}
 import vectors.LabelledPoint
-import models.Model
 
 class CoCoA[-LossType<:Loss[_,_]] (
-  @transient sc: SparkContext,
+  localSolver: LocalOptimizer[LossType],
   beta: Double = 1.0,
-  localSolver: LocalOptimizer[LossType] = new SDCAOptimizer,
   convergenceChecker: ConvergenceChecker[LossType] = new DualityGapConvergenceChecker)
+  (implicit @transient sc: SparkContext)
   extends DistributedOptimizer[LossType] {
 
   def optimize (
     model: Model[LossType],
-    data: RDD[Array[LabelledPoint]],
-    alphaInit: RDD[DenseVector[Double]],
-    vInit: DenseVector[Double]
-  ): (RDD[DenseVector[Double]], DenseVector[Double]) = {
+    dataRDD: RDD[LabelledPoint],
+    alphaInitRDD: RDD[Double],
+    vInit: DenseVector[Double]) = {
+
+    val data = dataRDD.mapPartitions(x=>Iterator(x.toArray), preservesPartitioning = true)
+    val alphaInit = alphaInitRDD.map(_ => 0.0)
+      .mapPartitions(x=>Iterator(new DenseVector(x.toArray)), preservesPartitioning = true)
 
     data.cache()
     val parts = data.count()
@@ -50,7 +53,14 @@ class CoCoA[-LossType<:Loss[_,_]] (
       t += 1
     }
 
-    (alpha, v)
+    (alpha.flatMap(_.data), v)
+  }
+
+  def optimize(model: Model[LossType], dataRDD: RDD[LabelledPoint]): (RDD[Double], DenseVector[Double]) = {
+    val numFeatures = dataRDD.first().features.size
+    val alpha = dataRDD.map(_=>0.0)
+    val v = DenseVector.zeros[Double](numFeatures)
+    optimize(model, dataRDD, alpha, v)
   }
 }
 
@@ -70,4 +80,20 @@ object CoCoA {
 
     Iterator((deltaV, deltaAlpha))
   }
+
+  def optimize(model: Model[HingeLoss], data: RDD[LabelledPoint])
+    (implicit sc: SparkContext) =
+    new CoCoA(new SDCAOptimizer(new SVMOptimizer)).optimize(model, data)
+
+  def optimize(model: Model[RidgeLoss], data: RDD[LabelledPoint])
+    (implicit sc: SparkContext, d: DummyImplicit) =
+    new CoCoA(new SDCAOptimizer(new RidgeOptimizer)).optimize(model, data)
+
+  def optimize(model: Model[Loss[RealFunction,RealFunction]], data: RDD[LabelledPoint])
+    (implicit sc: SparkContext, d: DummyImplicit, d2: DummyImplicit) =
+    new CoCoA(new SDCAOptimizer(new BrentMethodOptimizer)).optimize(model, data)
+
+  def optimize(model: Model[Loss[RealFunction,DifferentiableRealFunction]], data: RDD[LabelledPoint])
+    (implicit sc: SparkContext, d: DummyImplicit, d2: DummyImplicit, d3: DummyImplicit) =
+    new CoCoA(new SDCAOptimizer(new BrentMethodOptimizerWithFirstDerivative)).optimize(model, data)
 }

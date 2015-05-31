@@ -3,6 +3,7 @@ package optimizers.local
 import java.security.SecureRandom
 import breeze.linalg.DenseVector
 import models.{Model, Loss}
+import optimizers.coordinate.BrentMethodOptimizer
 import optimizers.{LocalOptimizer, SingleCoordinateOptimizer}
 import vectors.LabelledPoint
 
@@ -10,8 +11,7 @@ import vectors.LabelledPoint
  * A Single Dual Coordinate Ascent based local solver
  * @param scOptimizer The method used to optimize on a single coordinate
  */
-class SDCAOptimizer [-LossType<:Loss[_,_]] (numPasses: Int = 10)
-  (implicit scOptimizer: SingleCoordinateOptimizer[LossType])
+class SDCAOptimizer [-LossType<:Loss[_,_]] (scOptimizer: SingleCoordinateOptimizer[LossType],numPasses: Int = 10)
   extends LocalOptimizer[LossType] {
 
   /**

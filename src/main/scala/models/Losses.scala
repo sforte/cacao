@@ -1,5 +1,7 @@
 package models
 
+import optimizers.coordinate.BrentMethodOptimizer
+
 import scala.Double._
 import scala.math._
 

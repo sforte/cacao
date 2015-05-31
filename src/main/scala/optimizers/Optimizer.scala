@@ -16,4 +16,4 @@ trait LocalOptimizer[-LossType<:Loss[_,_]]
   extends Optimizer[LossType, Array[LabelledPoint], DenseVector[Double], DenseVector[Double]]
 
 trait DistributedOptimizer[-LossType<:Loss[_,_]]
-  extends Optimizer[LossType, RDD[Array[LabelledPoint]], RDD[DenseVector[Double]], DenseVector[Double]]
+  extends Optimizer[LossType, RDD[LabelledPoint], RDD[Double], DenseVector[Double]]
